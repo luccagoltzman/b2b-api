@@ -79,10 +79,13 @@ export class AnaliseController {
       // Retornar resposta com todos os campos gerados
       res.json({
         categoria: propostaGerada.categoria,
+        aliquotaIpi: propostaGerada.aliquotaIpi,
         desconto: propostaGerada.desconto,
         descontoTipo: propostaGerada.descontoTipo,
         condicoesPagamento: propostaGerada.condicoesPagamento,
         prazoEntrega: propostaGerada.prazoEntrega,
+        tipoPedido: propostaGerada.tipoPedido,
+        transportadora: propostaGerada.transportadora,
         estrategiaRepresentacao: propostaGerada.estrategiaRepresentacao,
         publicoAlvo: propostaGerada.publicoAlvo,
         diferenciaisCompetitivos: propostaGerada.diferenciaisCompetitivos,

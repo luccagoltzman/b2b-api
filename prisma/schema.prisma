@@ -20,26 +20,44 @@ model Proposta {
   descricao               String?      @db.Text
   observacoes             String?      @db.Text
   
-  // Novos campos - Informações do Produto
+  // Campos - Informações do Produto
   produto                 String?
   marca                   String?
   categoria               String?
   unidadeMedida           String?      @default("unidade")
+  produtoCodigo           String?
+  aliquotaIpi             Float?
   
-  // Novos campos - Valores e Quantidades
+  // Campos - Valores e Quantidades
   valorUnitario           Float?
   quantidade              Float?
   desconto                Float?
   descontoTipo            String?      @default("percentual") // 'percentual' | 'valor'
+  valorFrete              Float?
   
-  // Novos campos - Condições Comerciais
+  // Campos - Condições Comerciais
   condicoesPagamento      String?
   prazoEntrega            String?
+  tipoPedido              String?      @default("venda") // 'venda' | 'cotacao' | 'orcamento'
+  transportadora          String?
+  informacoesAdicionais   String?      @db.Text
   
-  // Novos campos - Estratégia de Representação
+  // Campos - Estratégia de Representação
   estrategiaRepresentacao String?      @db.Text
   publicoAlvo             String?
   diferenciaisCompetitivos String?     @db.Text
+  
+  // Campos - Informações do Cliente
+  clienteCnpj             String?
+  clienteEndereco         String?
+  clienteNumero            String?
+  clienteBairro            String?
+  clienteCidade            String?
+  clienteCep               String?
+  clienteEstado             String?     @db.VarChar(2)
+  clienteTelefone          String?
+  clienteEmail             String?
+  clienteNomeFantasia      String?
   
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
@@ -47,6 +65,7 @@ model Proposta {
 
   @@index([categoria])
   @@index([marca])
+  @@index([tipoPedido])
   @@map("propostas")
 }
 

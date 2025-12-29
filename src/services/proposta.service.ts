@@ -44,15 +44,31 @@ export class PropostaService {
     marca?: string;
     categoria?: string;
     unidadeMedida?: string;
+    produtoCodigo?: string;
+    aliquotaIpi?: number;
     valorUnitario?: number;
     quantidade?: number;
     desconto?: number;
     descontoTipo?: 'percentual' | 'valor';
+    valorFrete?: number;
     condicoesPagamento?: string;
     prazoEntrega?: string;
+    tipoPedido?: string;
+    transportadora?: string;
+    informacoesAdicionais?: string;
     estrategiaRepresentacao?: string;
     publicoAlvo?: string;
     diferenciaisCompetitivos?: string;
+    clienteCnpj?: string;
+    clienteEndereco?: string;
+    clienteNumero?: string;
+    clienteBairro?: string;
+    clienteCidade?: string;
+    clienteCep?: string;
+    clienteEstado?: string;
+    clienteTelefone?: string;
+    clienteEmail?: string;
+    clienteNomeFantasia?: string;
   }): Promise<Proposta> {
     const statusInicial = dados.status || 'rascunho';
     
@@ -68,15 +84,31 @@ export class PropostaService {
         marca: dados.marca,
         categoria: dados.categoria,
         unidadeMedida: dados.unidadeMedida || 'unidade',
+        produtoCodigo: dados.produtoCodigo,
+        aliquotaIpi: dados.aliquotaIpi,
         valorUnitario: dados.valorUnitario,
         quantidade: dados.quantidade,
         desconto: dados.desconto,
         descontoTipo: dados.descontoTipo || 'percentual',
+        valorFrete: dados.valorFrete,
         condicoesPagamento: dados.condicoesPagamento,
         prazoEntrega: dados.prazoEntrega,
+        tipoPedido: dados.tipoPedido || 'venda',
+        transportadora: dados.transportadora,
+        informacoesAdicionais: dados.informacoesAdicionais,
         estrategiaRepresentacao: dados.estrategiaRepresentacao,
         publicoAlvo: dados.publicoAlvo,
         diferenciaisCompetitivos: dados.diferenciaisCompetitivos,
+        clienteCnpj: dados.clienteCnpj,
+        clienteEndereco: dados.clienteEndereco,
+        clienteNumero: dados.clienteNumero,
+        clienteBairro: dados.clienteBairro,
+        clienteCidade: dados.clienteCidade,
+        clienteCep: dados.clienteCep,
+        clienteEstado: dados.clienteEstado,
+        clienteTelefone: dados.clienteTelefone,
+        clienteEmail: dados.clienteEmail,
+        clienteNomeFantasia: dados.clienteNomeFantasia,
       },
     });
 
@@ -140,15 +172,31 @@ export class PropostaService {
         ...(dados.marca !== undefined && { marca: dados.marca }),
         ...(dados.categoria !== undefined && { categoria: dados.categoria }),
         ...(dados.unidadeMedida !== undefined && { unidadeMedida: dados.unidadeMedida }),
+        ...(dados.produtoCodigo !== undefined && { produtoCodigo: dados.produtoCodigo }),
+        ...(dados.aliquotaIpi !== undefined && { aliquotaIpi: dados.aliquotaIpi }),
         ...(dados.valorUnitario !== undefined && { valorUnitario: dados.valorUnitario }),
         ...(dados.quantidade !== undefined && { quantidade: dados.quantidade }),
         ...(dados.desconto !== undefined && { desconto: dados.desconto }),
         ...(dados.descontoTipo !== undefined && { descontoTipo: dados.descontoTipo }),
+        ...(dados.valorFrete !== undefined && { valorFrete: dados.valorFrete }),
         ...(dados.condicoesPagamento !== undefined && { condicoesPagamento: dados.condicoesPagamento }),
         ...(dados.prazoEntrega !== undefined && { prazoEntrega: dados.prazoEntrega }),
+        ...(dados.tipoPedido !== undefined && { tipoPedido: dados.tipoPedido }),
+        ...(dados.transportadora !== undefined && { transportadora: dados.transportadora }),
+        ...(dados.informacoesAdicionais !== undefined && { informacoesAdicionais: dados.informacoesAdicionais }),
         ...(dados.estrategiaRepresentacao !== undefined && { estrategiaRepresentacao: dados.estrategiaRepresentacao }),
         ...(dados.publicoAlvo !== undefined && { publicoAlvo: dados.publicoAlvo }),
         ...(dados.diferenciaisCompetitivos !== undefined && { diferenciaisCompetitivos: dados.diferenciaisCompetitivos }),
+        ...(dados.clienteCnpj !== undefined && { clienteCnpj: dados.clienteCnpj }),
+        ...(dados.clienteEndereco !== undefined && { clienteEndereco: dados.clienteEndereco }),
+        ...(dados.clienteNumero !== undefined && { clienteNumero: dados.clienteNumero }),
+        ...(dados.clienteBairro !== undefined && { clienteBairro: dados.clienteBairro }),
+        ...(dados.clienteCidade !== undefined && { clienteCidade: dados.clienteCidade }),
+        ...(dados.clienteCep !== undefined && { clienteCep: dados.clienteCep }),
+        ...(dados.clienteEstado !== undefined && { clienteEstado: dados.clienteEstado }),
+        ...(dados.clienteTelefone !== undefined && { clienteTelefone: dados.clienteTelefone }),
+        ...(dados.clienteEmail !== undefined && { clienteEmail: dados.clienteEmail }),
+        ...(dados.clienteNomeFantasia !== undefined && { clienteNomeFantasia: dados.clienteNomeFantasia }),
       },
     });
 

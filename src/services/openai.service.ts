@@ -220,10 +220,13 @@ Responda em formato JSON com as chaves: descricao, observacoes (opcional), valor
     quantidade: number;
   }): Promise<{
     categoria: string;
+    aliquotaIpi: number; // OBRIGATÓRIO - calculado automaticamente
     desconto?: number;
     descontoTipo?: 'percentual' | 'valor';
     condicoesPagamento: string;
     prazoEntrega: string;
+    tipoPedido?: string;
+    transportadora?: string;
     estrategiaRepresentacao: string;
     publicoAlvo: string;
     diferenciaisCompetitivos: string;
@@ -251,15 +254,30 @@ INFORMAÇÕES BÁSICAS:
 - Valor Total (sem desconto): R$ ${valorTotal.toFixed(2)}
 
 INSTRUÇÕES:
-1. Categoria do Produto: Identifique e sugira a categoria mais adequada (ex: Alimentos, Bebidas, Limpeza, Higiene, etc)
+1. Categoria do Produto: Identifique e sugira a categoria mais adequada (ex: Alimentos, Bebidas, Limpeza, Higiene, Eletrodomésticos, Filtros, etc)
 
-2. Desconto: Sugira um desconto competitivo e estratégico (percentual ou valor fixo) que seja atraente mas mantenha margem de lucro. Justifique a escolha.
+2. Alíquota IPI (OBRIGATÓRIO): Calcule a alíquota IPI correta baseada no produto, marca e categoria. Considere:
+   - Eletrodomésticos: geralmente 5-15% (ex: geladeiras, fogões, máquinas de lavar)
+   - Filtros e purificadores: geralmente 2-5% (ex: filtros de água, purificadores)
+   - Alimentos básicos: geralmente 0-5% (ex: arroz, feijão, açúcar)
+   - Bebidas: geralmente 5-20% (ex: refrigerantes, sucos, cervejas)
+   - Produtos de limpeza: geralmente 2-10% (ex: detergentes, sabões)
+   - Produtos farmacêuticos: geralmente 0-10% (ex: medicamentos, suplementos)
+   - Produtos de higiene pessoal: geralmente 2-8% (ex: sabonetes, shampoos)
+   - Outros produtos: pesquise a alíquota específica baseada na NCM (Nomenclatura Comum do Mercosul)
+   IMPORTANTE: Retorne a alíquota como número decimal (ex: 2.6 para 2.6%, 15.0 para 15%)
 
-3. Condições de Pagamento: Sugira condições comerciais atrativas e competitivas para o mercado B2B (ex: "30/60/90 dias", "Boleto à vista com desconto", etc)
+3. Desconto: Sugira um desconto competitivo e estratégico (percentual ou valor fixo) que seja atraente mas mantenha margem de lucro. Justifique a escolha.
 
-4. Prazo de Entrega: Sugira um prazo realista e competitivo baseado no tipo de produto e quantidade
+4. Condições de Pagamento: Sugira condições comerciais atrativas e competitivas para o mercado B2B (ex: "30/60/90 dias", "Boleto à vista com desconto", etc)
 
-5. Estratégia de Representação: Crie uma estratégia completa e detalhada (3-5 parágrafos) incluindo:
+5. Prazo de Entrega: Sugira um prazo realista e competitivo baseado no tipo de produto e quantidade
+
+6. Tipo de Pedido: Sugira o tipo de pedido mais adequado (geralmente "venda", mas pode ser "cotacao" ou "orcamento" dependendo do contexto)
+
+7. Transportadora: Sugira a transportadora ou tipo de transporte (ex: "CIF", "FOB", "Transportadora X")
+
+8. Estratégia de Representação: Crie uma estratégia completa e detalhada (3-5 parágrafos) incluindo:
    - Ações promocionais sugeridas
    - Parcerias e eventos
    - Material de PDV (Ponto de Venda)
@@ -267,17 +285,17 @@ INSTRUÇÕES:
    - Campanhas sazonais (se aplicável)
    - Outras ações estratégicas relevantes
 
-6. Público-Alvo: Identifique o público-alvo ideal para este produto (ex: "Famílias classe A/B", "Jovens adultos", etc)
+9. Público-Alvo: Identifique o público-alvo ideal para este produto (ex: "Famílias classe A/B", "Jovens adultos", etc)
 
-7. Diferenciais Competitivos: Liste os principais diferenciais deste produto em relação à concorrência (5-7 itens separados por vírgula)
+10. Diferenciais Competitivos: Liste os principais diferenciais deste produto em relação à concorrência (5-7 itens separados por vírgula)
 
-8. Descrição: Crie uma descrição completa e profissional da proposta (2-3 parágrafos) destacando:
+11. Descrição: Crie uma descrição completa e profissional da proposta (2-3 parágrafos) destacando:
    - O produto e sua qualidade
    - A oportunidade de negócio
    - Benefícios para o cliente
    - Potencial de crescimento
 
-9. Observações: Inclua observações importantes, avisos sobre valores, recomendações estratégicas e alertas relevantes (use ⚠️ para avisos importantes)
+12. Observações: Inclua observações importantes, avisos sobre valores, recomendações estratégicas e alertas relevantes (use ⚠️ para avisos importantes)
 
 IMPORTANTE:
 - Seja específico e profissional
@@ -290,10 +308,13 @@ IMPORTANTE:
 Retorne APENAS um JSON válido com a seguinte estrutura:
 {
   "categoria": "string",
+  "aliquotaIpi": number (OBRIGATÓRIO - alíquota IPI calculada baseada no produto, ex: 2.6 para 2.6%),
   "desconto": number (opcional, se não sugerir desconto omita este campo),
   "descontoTipo": "percentual" ou "valor" (obrigatório se desconto for fornecido),
   "condicoesPagamento": "string",
   "prazoEntrega": "string",
+  "tipoPedido": "venda" ou "cotacao" ou "orcamento" (opcional, padrão: "venda"),
+  "transportadora": "string (opcional, ex: 'CIF', 'FOB', ou nome da transportadora)",
   "estrategiaRepresentacao": "string (texto completo)",
   "publicoAlvo": "string",
   "diferenciaisCompetitivos": "string (texto completo com itens separados por vírgula)",
@@ -337,10 +358,16 @@ Retorne APENAS um JSON válido com a seguinte estrutura:
       const parsed = JSON.parse(jsonContent);
 
       // Validar campos obrigatórios
-      if (!parsed.categoria || !parsed.condicoesPagamento || !parsed.prazoEntrega || 
+      if (!parsed.categoria || parsed.aliquotaIpi === undefined || parsed.aliquotaIpi === null ||
+          !parsed.condicoesPagamento || !parsed.prazoEntrega || 
           !parsed.estrategiaRepresentacao || !parsed.publicoAlvo || 
           !parsed.diferenciaisCompetitivos || !parsed.descricao || !parsed.observacoes) {
         throw new Error('Resposta da IA incompleta. Alguns campos obrigatórios estão faltando.');
+      }
+
+      // Validar alíquota IPI
+      if (parsed.aliquotaIpi < 0 || parsed.aliquotaIpi > 100) {
+        throw new Error('Alíquota IPI inválida. Deve estar entre 0 e 100.');
       }
 
       // Validar desconto se fornecido
@@ -350,10 +377,13 @@ Retorne APENAS um JSON válido com a seguinte estrutura:
 
       return {
         categoria: parsed.categoria,
+        aliquotaIpi: parsed.aliquotaIpi,
         desconto: parsed.desconto,
         descontoTipo: parsed.descontoTipo,
         condicoesPagamento: parsed.condicoesPagamento,
         prazoEntrega: parsed.prazoEntrega,
+        tipoPedido: parsed.tipoPedido || 'venda',
+        transportadora: parsed.transportadora,
         estrategiaRepresentacao: parsed.estrategiaRepresentacao,
         publicoAlvo: parsed.publicoAlvo,
         diferenciaisCompetitivos: parsed.diferenciaisCompetitivos,

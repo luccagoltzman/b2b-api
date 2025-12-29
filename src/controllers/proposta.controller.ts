@@ -21,7 +21,7 @@ const propostaSchemaBase = z.object({
   descricao: z.string().optional(),
   observacoes: z.string().optional(),
   
-  // Novos campos - Informações do Produto
+  // Campos - Informações do Produto
   produto: z.string().optional(),
   marca: z.string().optional(),
   categoria: z.string().optional(),
@@ -38,21 +38,39 @@ const propostaSchemaBase = z.object({
     'metro',
     'outro',
   ]).optional(),
+  produtoCodigo: z.string().optional(),
+  aliquotaIpi: z.number().min(0, 'Alíquota IPI deve ser maior ou igual a 0').max(100, 'Alíquota IPI deve ser menor ou igual a 100').optional(),
   
-  // Novos campos - Valores e Quantidades
+  // Campos - Valores e Quantidades
   valorUnitario: z.number().nonnegative('Valor unitário deve ser positivo ou zero').optional(),
   quantidade: z.number().nonnegative('Quantidade deve ser positiva ou zero').optional(),
   desconto: z.number().nonnegative('Desconto deve ser positivo ou zero').optional(),
   descontoTipo: z.enum(['percentual', 'valor']).optional(),
+  valorFrete: z.number().nonnegative('Valor do frete deve ser positivo ou zero').optional(),
   
-  // Novos campos - Condições Comerciais
+  // Campos - Condições Comerciais
   condicoesPagamento: z.string().optional(),
   prazoEntrega: z.string().optional(),
+  tipoPedido: z.enum(['venda', 'cotacao', 'orcamento']).optional(),
+  transportadora: z.string().optional(),
+  informacoesAdicionais: z.string().optional(),
   
-  // Novos campos - Estratégia de Representação
+  // Campos - Estratégia de Representação
   estrategiaRepresentacao: z.string().optional(),
   publicoAlvo: z.string().optional(),
   diferenciaisCompetitivos: z.string().optional(),
+  
+  // Campos - Informações do Cliente
+  clienteCnpj: z.string().optional(),
+  clienteEndereco: z.string().optional(),
+  clienteNumero: z.string().optional(),
+  clienteBairro: z.string().optional(),
+  clienteCidade: z.string().optional(),
+  clienteCep: z.string().optional(),
+  clienteEstado: z.string().max(2, 'Estado deve ter no máximo 2 caracteres').optional(),
+  clienteTelefone: z.string().optional(),
+  clienteEmail: z.string().email('E-mail inválido').optional().or(z.literal('')),
+  clienteNomeFantasia: z.string().optional(),
 });
 
 // Schema com validações refinadas (para criação)

@@ -42,6 +42,8 @@ export type UnidadeMedida =
 
 export type DescontoTipo = 'percentual' | 'valor';
 
+export type TipoPedido = 'venda' | 'cotacao' | 'orcamento';
+
 export interface Proposta {
   id: string;
   cliente: string;
@@ -52,26 +54,44 @@ export interface Proposta {
   descricao?: string;
   observacoes?: string;
   
-  // Novos campos - Informações do Produto
+  // Campos - Informações do Produto
   produto?: string;
   marca?: string;
   categoria?: string;
   unidadeMedida?: UnidadeMedida;
+  produtoCodigo?: string;
+  aliquotaIpi?: number;
   
-  // Novos campos - Valores e Quantidades
+  // Campos - Valores e Quantidades
   valorUnitario?: number;
   quantidade?: number;
   desconto?: number;
   descontoTipo?: DescontoTipo;
+  valorFrete?: number;
   
-  // Novos campos - Condições Comerciais
+  // Campos - Condições Comerciais
   condicoesPagamento?: string;
   prazoEntrega?: string;
+  tipoPedido?: TipoPedido;
+  transportadora?: string;
+  informacoesAdicionais?: string;
   
-  // Novos campos - Estratégia de Representação
+  // Campos - Estratégia de Representação
   estrategiaRepresentacao?: string;
   publicoAlvo?: string;
   diferenciaisCompetitivos?: string;
+  
+  // Campos - Informações do Cliente
+  clienteCnpj?: string;
+  clienteEndereco?: string;
+  clienteNumero?: string;
+  clienteBairro?: string;
+  clienteCidade?: string;
+  clienteCep?: string;
+  clienteEstado?: string;
+  clienteTelefone?: string;
+  clienteEmail?: string;
+  clienteNomeFantasia?: string;
   
   checkpoints?: Checkpoint[];
 }
