@@ -7,7 +7,7 @@ import { PropostaService } from '../services/proposta.service';
 
 const analiseSchema = z.object({
   tipo: z.enum(['performance', 'concorrencia', 'tendencia', 'oportunidade']),
-  dados: z.string().min(1, 'Dados são obrigatórios'),
+  dados: z.string().optional(), // Agora é opcional, pois coletamos dados reais automaticamente
 });
 
 const propostaGerarSchema = z.object({
@@ -30,6 +30,7 @@ export class AnaliseController {
   gerarAnalise = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { tipo, dados } = analiseSchema.parse(req.body);
+      // Se dados não forem fornecidos, usamos dados reais do banco automaticamente
       const resultado = await this.analiseService.gerarAnalise(tipo, dados);
       res.json({ resultado });
     } catch (error) {
