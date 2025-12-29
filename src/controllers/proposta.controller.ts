@@ -3,9 +3,10 @@ import { PropostaService } from '../services/proposta.service';
 import { AppError } from '../middleware/errorHandler';
 import { z, ZodError } from 'zod';
 
-const propostaSchema = z.object({
+// Schema base sem refinements (para poder usar .partial())
+const propostaSchemaBase = z.object({
   cliente: z.string().min(1, 'Cliente é obrigatório'),
-  valor: z.number().positive('Valor deve ser positivo'),
+  valor: z.number().nonnegative('Valor deve ser positivo ou zero'),
   status: z.enum([
     'rascunho',
     'pendente',
@@ -19,6 +20,76 @@ const propostaSchema = z.object({
   dataVencimento: z.string().regex(/^\d{4}-\d{2}-\d{2}/, 'Data deve estar no formato YYYY-MM-DD'),
   descricao: z.string().optional(),
   observacoes: z.string().optional(),
+  
+  // Novos campos - Informações do Produto
+  produto: z.string().optional(),
+  marca: z.string().optional(),
+  categoria: z.string().optional(),
+  unidadeMedida: z.enum([
+    'unidade',
+    'kg',
+    'g',
+    'litro',
+    'ml',
+    'caixa',
+    'pacote',
+    'fardo',
+    'duzia',
+    'metro',
+    'outro',
+  ]).optional(),
+  
+  // Novos campos - Valores e Quantidades
+  valorUnitario: z.number().nonnegative('Valor unitário deve ser positivo ou zero').optional(),
+  quantidade: z.number().nonnegative('Quantidade deve ser positiva ou zero').optional(),
+  desconto: z.number().nonnegative('Desconto deve ser positivo ou zero').optional(),
+  descontoTipo: z.enum(['percentual', 'valor']).optional(),
+  
+  // Novos campos - Condições Comerciais
+  condicoesPagamento: z.string().optional(),
+  prazoEntrega: z.string().optional(),
+  
+  // Novos campos - Estratégia de Representação
+  estrategiaRepresentacao: z.string().optional(),
+  publicoAlvo: z.string().optional(),
+  diferenciaisCompetitivos: z.string().optional(),
+});
+
+// Schema com validações refinadas (para criação)
+const propostaSchema = propostaSchemaBase.refine((data) => {
+  // Se desconto for fornecido, descontoTipo também deve ser fornecido
+  if (data.desconto !== undefined && data.desconto > 0 && !data.descontoTipo) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Se desconto for fornecido, descontoTipo também deve ser fornecido',
+  path: ['descontoTipo'],
+}).refine((data) => {
+  // Validar cálculo de valor se valorUnitario e quantidade forem fornecidos
+  // Mas apenas se o usuário forneceu ambos (não obrigatório)
+  if (data.valorUnitario !== undefined && data.quantidade !== undefined && 
+      data.valorUnitario > 0 && data.quantidade > 0) {
+    let valorCalculado = data.valorUnitario * data.quantidade;
+    
+    if (data.desconto !== undefined && data.desconto > 0 && data.descontoTipo) {
+      if (data.descontoTipo === 'percentual') {
+        valorCalculado = valorCalculado * (1 - data.desconto / 100);
+      } else if (data.descontoTipo === 'valor') {
+        valorCalculado = Math.max(0, valorCalculado - data.desconto);
+      }
+    }
+    
+    // Permitir diferença de até 0.10 por arredondamento e flexibilidade
+    const diferenca = Math.abs(data.valor - valorCalculado);
+    if (diferenca > 0.10) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: 'O valor fornecido não corresponde ao cálculo esperado. Se fornecer valorUnitario e quantidade, o valor deve ser aproximadamente (valorUnitario × quantidade - desconto).',
+  path: ['valor'],
 });
 
 const statusUpdateSchema = z.object({
@@ -35,7 +106,8 @@ const statusUpdateSchema = z.object({
   descricao: z.string().optional(),
 });
 
-const propostaUpdateSchema = propostaSchema.partial();
+// Schema para atualização (todos os campos opcionais, sem validações refinadas)
+const propostaUpdateSchema = propostaSchemaBase.partial();
 
 export class PropostaController {
   private propostaService: PropostaService;

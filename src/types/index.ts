@@ -27,6 +27,21 @@ export interface Checkpoint {
   usuario?: string;
 }
 
+export type UnidadeMedida = 
+  | 'unidade' 
+  | 'kg' 
+  | 'g' 
+  | 'litro' 
+  | 'ml' 
+  | 'caixa' 
+  | 'pacote' 
+  | 'fardo' 
+  | 'duzia' 
+  | 'metro' 
+  | 'outro';
+
+export type DescontoTipo = 'percentual' | 'valor';
+
 export interface Proposta {
   id: string;
   cliente: string;
@@ -36,6 +51,28 @@ export interface Proposta {
   dataVencimento: string;
   descricao?: string;
   observacoes?: string;
+  
+  // Novos campos - Informações do Produto
+  produto?: string;
+  marca?: string;
+  categoria?: string;
+  unidadeMedida?: UnidadeMedida;
+  
+  // Novos campos - Valores e Quantidades
+  valorUnitario?: number;
+  quantidade?: number;
+  desconto?: number;
+  descontoTipo?: DescontoTipo;
+  
+  // Novos campos - Condições Comerciais
+  condicoesPagamento?: string;
+  prazoEntrega?: string;
+  
+  // Novos campos - Estratégia de Representação
+  estrategiaRepresentacao?: string;
+  publicoAlvo?: string;
+  diferenciaisCompetitivos?: string;
+  
   checkpoints?: Checkpoint[];
 }
 

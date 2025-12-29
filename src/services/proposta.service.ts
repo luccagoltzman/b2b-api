@@ -40,6 +40,19 @@ export class PropostaService {
     dataVencimento: string;
     descricao?: string;
     observacoes?: string;
+    produto?: string;
+    marca?: string;
+    categoria?: string;
+    unidadeMedida?: string;
+    valorUnitario?: number;
+    quantidade?: number;
+    desconto?: number;
+    descontoTipo?: 'percentual' | 'valor';
+    condicoesPagamento?: string;
+    prazoEntrega?: string;
+    estrategiaRepresentacao?: string;
+    publicoAlvo?: string;
+    diferenciaisCompetitivos?: string;
   }): Promise<Proposta> {
     const statusInicial = dados.status || 'rascunho';
     
@@ -51,6 +64,19 @@ export class PropostaService {
         dataVencimento: new Date(dados.dataVencimento),
         descricao: dados.descricao,
         observacoes: dados.observacoes,
+        produto: dados.produto,
+        marca: dados.marca,
+        categoria: dados.categoria,
+        unidadeMedida: dados.unidadeMedida || 'unidade',
+        valorUnitario: dados.valorUnitario,
+        quantidade: dados.quantidade,
+        desconto: dados.desconto,
+        descontoTipo: dados.descontoTipo || 'percentual',
+        condicoesPagamento: dados.condicoesPagamento,
+        prazoEntrega: dados.prazoEntrega,
+        estrategiaRepresentacao: dados.estrategiaRepresentacao,
+        publicoAlvo: dados.publicoAlvo,
+        diferenciaisCompetitivos: dados.diferenciaisCompetitivos,
       },
     });
 
@@ -75,6 +101,19 @@ export class PropostaService {
       dataVencimento: string;
       descricao: string;
       observacoes: string;
+      produto: string;
+      marca: string;
+      categoria: string;
+      unidadeMedida: string;
+      valorUnitario: number;
+      quantidade: number;
+      desconto: number;
+      descontoTipo: 'percentual' | 'valor';
+      condicoesPagamento: string;
+      prazoEntrega: string;
+      estrategiaRepresentacao: string;
+      publicoAlvo: string;
+      diferenciaisCompetitivos: string;
     }>
   ): Promise<Proposta> {
     // Buscar proposta atual para verificar mudança de status
@@ -97,6 +136,19 @@ export class PropostaService {
         ...(dados.dataVencimento && { dataVencimento: new Date(dados.dataVencimento) }),
         ...(dados.descricao !== undefined && { descricao: dados.descricao }),
         ...(dados.observacoes !== undefined && { observacoes: dados.observacoes }),
+        ...(dados.produto !== undefined && { produto: dados.produto }),
+        ...(dados.marca !== undefined && { marca: dados.marca }),
+        ...(dados.categoria !== undefined && { categoria: dados.categoria }),
+        ...(dados.unidadeMedida !== undefined && { unidadeMedida: dados.unidadeMedida }),
+        ...(dados.valorUnitario !== undefined && { valorUnitario: dados.valorUnitario }),
+        ...(dados.quantidade !== undefined && { quantidade: dados.quantidade }),
+        ...(dados.desconto !== undefined && { desconto: dados.desconto }),
+        ...(dados.descontoTipo !== undefined && { descontoTipo: dados.descontoTipo }),
+        ...(dados.condicoesPagamento !== undefined && { condicoesPagamento: dados.condicoesPagamento }),
+        ...(dados.prazoEntrega !== undefined && { prazoEntrega: dados.prazoEntrega }),
+        ...(dados.estrategiaRepresentacao !== undefined && { estrategiaRepresentacao: dados.estrategiaRepresentacao }),
+        ...(dados.publicoAlvo !== undefined && { publicoAlvo: dados.publicoAlvo }),
+        ...(dados.diferenciaisCompetitivos !== undefined && { diferenciaisCompetitivos: dados.diferenciaisCompetitivos }),
       },
     });
 
@@ -248,6 +300,19 @@ export class PropostaService {
       dataVencimento: proposta.dataVencimento.toISOString(),
       descricao: proposta.descricao || undefined,
       observacoes: proposta.observacoes || undefined,
+      produto: proposta.produto || undefined,
+      marca: proposta.marca || undefined,
+      categoria: proposta.categoria || undefined,
+      unidadeMedida: proposta.unidadeMedida || undefined,
+      valorUnitario: proposta.valorUnitario || undefined,
+      quantidade: proposta.quantidade || undefined,
+      desconto: proposta.desconto || undefined,
+      descontoTipo: proposta.descontoTipo || undefined,
+      condicoesPagamento: proposta.condicoesPagamento || undefined,
+      prazoEntrega: proposta.prazoEntrega || undefined,
+      estrategiaRepresentacao: proposta.estrategiaRepresentacao || undefined,
+      publicoAlvo: proposta.publicoAlvo || undefined,
+      diferenciaisCompetitivos: proposta.diferenciaisCompetitivos || undefined,
     };
   }
 
