@@ -69,6 +69,8 @@ export class PropostaService {
     clienteTelefone?: string;
     clienteEmail?: string;
     clienteNomeFantasia?: string;
+    quantidadeAdquirida?: number;
+    valorCompra?: number;
   }): Promise<Proposta> {
     const statusInicial = dados.status || 'rascunho';
     
@@ -109,6 +111,8 @@ export class PropostaService {
         clienteTelefone: dados.clienteTelefone,
         clienteEmail: dados.clienteEmail,
         clienteNomeFantasia: dados.clienteNomeFantasia,
+        quantidadeAdquirida: dados.quantidadeAdquirida,
+        valorCompra: dados.valorCompra,
       },
     });
 
@@ -197,6 +201,8 @@ export class PropostaService {
         ...(dados.clienteTelefone !== undefined && { clienteTelefone: dados.clienteTelefone }),
         ...(dados.clienteEmail !== undefined && { clienteEmail: dados.clienteEmail }),
         ...(dados.clienteNomeFantasia !== undefined && { clienteNomeFantasia: dados.clienteNomeFantasia }),
+        ...(dados.quantidadeAdquirida !== undefined && { quantidadeAdquirida: dados.quantidadeAdquirida }),
+        ...(dados.valorCompra !== undefined && { valorCompra: dados.valorCompra }),
       },
     });
 
@@ -223,7 +229,9 @@ export class PropostaService {
     id: string,
     novoStatus: PropostaStatus,
     descricao?: string,
-    usuario: string = 'sistema'
+    usuario: string = 'sistema',
+    quantidadeAdquirida?: number,
+    valorCompra?: number
   ): Promise<Proposta> {
     try {
       const propostaAtual = await prisma.proposta.findUnique({
@@ -257,6 +265,53 @@ export class PropostaService {
         );
       }
 
+      // Se for aprovar, usar valores padrão se não fornecidos
+      if (novoStatus === 'aprovada') {
+        // Se quantidadeAdquirida não for fornecida, usar quantidade como padrão
+        if (quantidadeAdquirida === undefined || quantidadeAdquirida === null) {
+          if (propostaAtual.quantidade && propostaAtual.quantidade > 0) {
+            quantidadeAdquirida = propostaAtual.quantidade;
+          } else {
+            throw new AppError(
+              'Ao aprovar uma proposta, o campo quantidadeAdquirida é obrigatório. Se não fornecido, a proposta deve ter o campo quantidade preenchido.',
+              'VALIDATION_ERROR',
+              400
+            );
+          }
+        }
+        
+        // Validar que quantidadeAdquirida é positiva
+        if (quantidadeAdquirida <= 0) {
+          throw new AppError(
+            'Ao aprovar uma proposta, o campo quantidadeAdquirida deve ser um número positivo',
+            'VALIDATION_ERROR',
+            400
+          );
+        }
+
+        // Se valorCompra não for fornecido, usar valor como padrão
+        if (valorCompra === undefined || valorCompra === null) {
+          if (propostaAtual.valor && propostaAtual.valor > 0) {
+            valorCompra = propostaAtual.valor;
+          } else {
+            throw new AppError(
+              'Ao aprovar uma proposta, o campo valorCompra é obrigatório. Se não fornecido, a proposta deve ter o campo valor preenchido.',
+              'VALIDATION_ERROR',
+              400
+            );
+          }
+        }
+        
+        // Validar que valorCompra é positivo
+        if (valorCompra <= 0) {
+          throw new AppError(
+            'Ao aprovar uma proposta, o campo valorCompra deve ser um número positivo',
+            'VALIDATION_ERROR',
+            400
+          );
+        }
+      }
+
       // Não criar checkpoint se o status não mudou
       if (statusAtual === novoStatus) {
         // Retornar proposta atualizada sem criar checkpoint duplicado
@@ -265,10 +320,19 @@ export class PropostaService {
         return propostaMapeada;
       }
 
-      // Atualizar status
+      // Preparar dados de atualização
+      const dadosAtualizacao: any = { status: novoStatus };
+      
+      // Se for aprovada, sempre atualizar dados de compra (já validados acima)
+      if (novoStatus === 'aprovada') {
+        dadosAtualizacao.quantidadeAdquirida = quantidadeAdquirida;
+        dadosAtualizacao.valorCompra = valorCompra;
+      }
+
+      // Atualizar status e dados de compra (se fornecidos)
       const proposta = await prisma.proposta.update({
         where: { id },
-        data: { status: novoStatus },
+        data: dadosAtualizacao,
       });
 
       // Criar checkpoint apenas se o status mudou
@@ -352,15 +416,33 @@ export class PropostaService {
       marca: proposta.marca || undefined,
       categoria: proposta.categoria || undefined,
       unidadeMedida: proposta.unidadeMedida || undefined,
+      produtoCodigo: proposta.produtoCodigo || undefined,
+      aliquotaIpi: proposta.aliquotaIpi || undefined,
       valorUnitario: proposta.valorUnitario || undefined,
       quantidade: proposta.quantidade || undefined,
       desconto: proposta.desconto || undefined,
       descontoTipo: proposta.descontoTipo || undefined,
+      valorFrete: proposta.valorFrete || undefined,
       condicoesPagamento: proposta.condicoesPagamento || undefined,
       prazoEntrega: proposta.prazoEntrega || undefined,
+      tipoPedido: proposta.tipoPedido || undefined,
+      transportadora: proposta.transportadora || undefined,
+      informacoesAdicionais: proposta.informacoesAdicionais || undefined,
       estrategiaRepresentacao: proposta.estrategiaRepresentacao || undefined,
       publicoAlvo: proposta.publicoAlvo || undefined,
       diferenciaisCompetitivos: proposta.diferenciaisCompetitivos || undefined,
+      clienteCnpj: proposta.clienteCnpj || undefined,
+      clienteEndereco: proposta.clienteEndereco || undefined,
+      clienteNumero: proposta.clienteNumero || undefined,
+      clienteBairro: proposta.clienteBairro || undefined,
+      clienteCidade: proposta.clienteCidade || undefined,
+      clienteCep: proposta.clienteCep || undefined,
+      clienteEstado: proposta.clienteEstado || undefined,
+      clienteTelefone: proposta.clienteTelefone || undefined,
+      clienteEmail: proposta.clienteEmail || undefined,
+      clienteNomeFantasia: proposta.clienteNomeFantasia || undefined,
+      quantidadeAdquirida: proposta.quantidadeAdquirida || undefined,
+      valorCompra: proposta.valorCompra || undefined,
     };
   }
 

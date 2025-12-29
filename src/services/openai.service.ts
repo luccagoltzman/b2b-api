@@ -82,26 +82,35 @@ Forneça uma análise de tendências incluindo:
 IMPORTANTE: Analise os dados reais fornecidos. Não faça análises genéricas sobre o mercado de sorvetes ou produtos alimentícios.`,
 
   oportunidade: `Você é um consultor estratégico especializado em identificar oportunidades de negócio B2B para representantes comerciais.
-
-CONTEXTO: Analise os dados reais do representante para identificar oportunidades específicas e acionáveis baseadas no histórico real de clientes, propostas e visitas.
-
-DADOS DO SISTEMA:
+ 
+CONTEXTO: Analise os dados reais do representante para responder DIRETAMENTE à pergunta ou questão específica fornecida pelo usuário.
+ 
+PERGUNTA/QUESTÃO DO USUÁRIO:
+{pergunta}
+ 
+DADOS DO SISTEMA (para contextualizar sua resposta):
 {dados}
-
-INSTRUÇÕES:
-- Identifique oportunidades REAIS baseadas nos dados (ex: clientes com potencial não explorado, propostas pendentes que precisam de follow-up, etc.)
-- Seja específico: cite nomes de clientes, valores, prazos
-- Priorize oportunidades por viabilidade e impacto
-- Foque em ações imediatas que o representante pode tomar
-
-Forneça uma análise de oportunidades incluindo:
-1. OPORTUNIDADES IMEDIATAS (ações que podem ser tomadas esta semana - cite clientes e valores específicos)
-2. OPORTUNIDADES DE MÉDIO PRAZO (próximos 30-60 dias baseadas nos dados)
-3. CLIENTES COM MAIOR POTENCIAL (identifique nos dados quais clientes merecem mais atenção)
-4. AÇÕES ESPECÍFICAS (para cada oportunidade, diga exatamente o que fazer)
-5. PRIORIZAÇÃO (ordene por impacto e facilidade de execução)
-
-IMPORTANTE: Use os dados reais. Cite clientes específicos, valores e prazos mencionados nos dados. Não faça recomendações genéricas.`,
+ 
+INSTRUÇÕES CRÍTICAS:
+- **RESPONDA DIRETAMENTE À PERGUNTA DO USUÁRIO** acima. Esta é a prioridade máxima.
+- Use os dados do sistema APENAS para fundamentar e contextualizar sua resposta à pergunta específica
+- Se a pergunta for sobre produtos, analise os produtos nos dados (marcas, categorias, valores, quantidades)
+- Se a pergunta for sobre clientes, analise os clientes nos dados
+- Se a pergunta for sobre rentabilidade/lucro, calcule margens, compare valores de compra vs. venda, analise produtos mais rentáveis
+- Seja específico: cite nomes de produtos, marcas, clientes, valores exatos dos dados
+- Priorize informações que respondam diretamente à pergunta
+- Se não houver dados suficientes para responder completamente, mencione isso e use o que estiver disponível
+ 
+ESTRUTURA DA RESPOSTA:
+1. RESPOSTA DIRETA (responda a pergunta do usuário de forma clara e direta, usando dados específicos)
+2. ANÁLISE DETALHADA (explique sua resposta com base nos dados fornecidos)
+3. DADOS DE APOIO (cite números, produtos, clientes específicos que fundamentam sua resposta)
+4. RECOMENDAÇÕES (se aplicável, baseadas na resposta à pergunta)
+ 
+IMPORTANTE: 
+- A pergunta do usuário é o foco principal. Os dados são apenas para fundamentar a resposta.
+- Se a pergunta for "Quais produtos têm mais chances de dar lucro?", analise os produtos nos dados, compare valores, margens, quantidades vendidas, etc.
+- Seja específico e cite dados reais. Não faça análises genéricas.`,
 };
 
 export class OpenAIService {
@@ -118,14 +127,26 @@ export class OpenAIService {
 
   async gerarAnalise(
     tipo: 'performance' | 'concorrencia' | 'tendencia' | 'oportunidade',
-    dados: string
+    dados: string,
+    perguntaUsuario?: string
   ): Promise<string> {
     const openai = getOpenAI();
     if (!openai) {
       throw new Error('OpenAI API não configurada. Configure OPENAI_API_KEY no arquivo .env');
     }
 
-    const prompt = PROMPTS[tipo].replace('{dados}', dados);
+    let prompt = PROMPTS[tipo];
+    
+    // Se for tipo "oportunidade" e houver pergunta do usuário, usar formato especial
+    if (tipo === 'oportunidade' && perguntaUsuario) {
+      // Separar pergunta dos dados se necessário
+      prompt = prompt
+        .replace('{pergunta}', perguntaUsuario.trim())
+        .replace('{dados}', dados);
+    } else {
+      // Para outros tipos, usar formato padrão
+      prompt = prompt.replace('{dados}', dados);
+    }
 
     try {
       const completion = await openai.chat.completions.create({
@@ -398,6 +419,54 @@ Retorne APENAS um JSON válido com a seguinte estrutura:
       }
       
       throw new Error(`Erro ao gerar proposta: ${error.message || 'Erro desconhecido'}`);
+    }
+  }
+
+  async gerarAnaliseSaida(prompt: string): Promise<any> {
+    const openai = getOpenAI();
+    if (!openai) {
+      throw new Error('OpenAI API não configurada. Configure OPENAI_API_KEY no arquivo .env');
+    }
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um especialista em análise de vendas no varejo. Sempre retorne apenas JSON válido, sem markdown ou texto adicional.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' },
+      });
+
+      const content = completion.choices[0]?.message?.content || '{}';
+      
+      // Tentar extrair JSON se houver texto adicional
+      let jsonContent = content.trim();
+      
+      // Remover markdown code blocks se existirem
+      if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      // Tentar encontrar JSON no conteúdo
+      const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[0];
+      }
+
+      const parsed = JSON.parse(jsonContent);
+      return parsed;
+    } catch (error: any) {
+      console.error('Erro ao gerar análise de saída com OpenAI:', error);
+      throw new Error(`Erro ao gerar análise de saída: ${error.message || 'Erro desconhecido'}`);
     }
   }
 }

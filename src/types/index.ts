@@ -93,6 +93,10 @@ export interface Proposta {
   clienteEmail?: string;
   clienteNomeFantasia?: string;
   
+  // Campos - Dados de Compra (Pós-Venda)
+  quantidadeAdquirida?: number;
+  valorCompra?: number;
+  
   checkpoints?: Checkpoint[];
 }
 

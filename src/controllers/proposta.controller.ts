@@ -71,6 +71,10 @@ const propostaSchemaBase = z.object({
   clienteTelefone: z.string().optional(),
   clienteEmail: z.string().email('E-mail inválido').optional().or(z.literal('')),
   clienteNomeFantasia: z.string().optional(),
+  
+  // Campos - Dados de Compra (Pós-Venda)
+  quantidadeAdquirida: z.number().nonnegative('Quantidade adquirida deve ser positiva ou zero').optional(),
+  valorCompra: z.number().nonnegative('Valor de compra deve ser positivo ou zero').optional(),
 });
 
 // Schema com validações refinadas (para criação)
@@ -122,6 +126,8 @@ const statusUpdateSchema = z.object({
     'cancelada',
   ]),
   descricao: z.string().optional(),
+  quantidadeAdquirida: z.number().positive('Quantidade adquirida deve ser um número positivo').optional(),
+  valorCompra: z.number().positive('Valor de compra deve ser um número positivo').optional(),
 });
 
 // Schema para atualização (todos os campos opcionais, sem validações refinadas)
@@ -191,10 +197,17 @@ export class PropostaController {
       console.log('Atualizando status da proposta:', { id, body: req.body });
       
       try {
-        const { status, descricao } = statusUpdateSchema.parse(req.body);
-        console.log('Dados validados:', { status, descricao });
+        const { status, descricao, quantidadeAdquirida, valorCompra } = statusUpdateSchema.parse(req.body);
+        console.log('Dados validados:', { status, descricao, quantidadeAdquirida, valorCompra });
 
-        const proposta = await this.propostaService.atualizarStatus(id, status, descricao);
+        const proposta = await this.propostaService.atualizarStatus(
+          id,
+          status,
+          descricao,
+          'sistema',
+          quantidadeAdquirida,
+          valorCompra
+        );
         res.json(proposta);
       } catch (validationError: any) {
         // Se for erro de validação do Zod

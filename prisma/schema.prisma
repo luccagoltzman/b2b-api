@@ -59,9 +59,14 @@ model Proposta {
   clienteEmail             String?
   clienteNomeFantasia      String?
   
+  // Campos - Dados de Compra (Pós-Venda)
+  quantidadeAdquirida     Float?
+  valorCompra             Float?
+  
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
   checkpoints             Checkpoint[]
+  analisesSaida           AnaliseSaida[]
 
   @@index([categoria])
   @@index([marca])
@@ -112,5 +117,31 @@ model Checkpoint {
   @@index([visitaId])
   @@index([data])
   @@map("checkpoints")
+}
+
+model AnaliseSaida {
+  id                String   @id @default(uuid())
+  propostaId        String
+  proposta          Proposta @relation(fields: [propostaId], references: [id], onDelete: Cascade)
+  dataAnalise       DateTime @default(now())
+  quantidadeVendida Float
+  periodoAnalise    String
+  statusSaida       String   // 'boa' | 'regular' | 'ruim'
+  analise           String   @db.Text
+  pontosPositivos   String   @db.Text // JSON array como string
+  pontosNegativos    String   @db.Text // JSON array como string
+  recomendacoes     String   @db.Text // JSON array como string
+  acoesSugeridas    String   @db.Text // JSON array como string
+  observacoes       String?  @db.Text
+  posicionamento    String?  @db.Text
+  concorrencia      String?  @db.Text
+  precoAtual        Float?
+  usuarioId         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([propostaId])
+  @@index([dataAnalise])
+  @@map("analises_saida")
 }
 
