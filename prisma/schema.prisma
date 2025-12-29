@@ -11,30 +11,32 @@ datasource db {
 }
 
 model Proposta {
-  id            String   @id @default(uuid())
+  id            String       @id @default(uuid())
   cliente       String
   valor         Float
-  status        String   // 'pendente' | 'aprovada' | 'rejeitada' | 'enviada'
-  dataCriacao   DateTime @default(now())
+  status        String       // 'rascunho' | 'pendente' | 'enviada' | 'em_analise_gerente_compras' | 'em_analise_diretoria' | 'aprovada' | 'rejeitada' | 'cancelada'
+  dataCriacao   DateTime     @default(now())
   dataVencimento DateTime
-  descricao     String?  @db.Text
-  observacoes   String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  descricao     String?      @db.Text
+  observacoes   String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  checkpoints   Checkpoint[]
 
   @@map("propostas")
 }
 
 model Visita {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   cliente     String
   data        DateTime
   hora        String
-  status      String   // 'agendada' | 'realizada' | 'cancelada' | 'reagendada'
+  status      String       // 'agendada' | 'confirmada' | 'em_andamento' | 'realizada' | 'cancelada' | 'reagendada'
   endereco    String?
-  observacoes String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  observacoes String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  checkpoints Checkpoint[]
 
   @@map("visitas")
 }
@@ -48,5 +50,24 @@ model Atividade {
   createdAt   DateTime @default(now())
 
   @@map("atividades")
+}
+
+model Checkpoint {
+  id          String    @id @default(uuid())
+  status      String
+  label       String
+  descricao   String?   @db.Text
+  data        DateTime  @default(now())
+  usuario     String?   @default("sistema")
+  propostaId  String?
+  visitaId    String?
+  proposta    Proposta? @relation(fields: [propostaId], references: [id], onDelete: Cascade)
+  visita      Visita?   @relation(fields: [visitaId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([propostaId])
+  @@index([visitaId])
+  @@index([data])
+  @@map("checkpoints")
 }
 

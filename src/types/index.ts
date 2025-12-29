@@ -1,6 +1,31 @@
-export type PropostaStatus = 'pendente' | 'aprovada' | 'rejeitada' | 'enviada';
-export type VisitaStatus = 'agendada' | 'realizada' | 'cancelada' | 'reagendada';
+export type PropostaStatus = 
+  | 'rascunho' 
+  | 'pendente' 
+  | 'enviada' 
+  | 'em_analise_gerente_compras' 
+  | 'em_analise_diretoria' 
+  | 'aprovada' 
+  | 'rejeitada' 
+  | 'cancelada';
+
+export type VisitaStatus = 
+  | 'agendada' 
+  | 'confirmada' 
+  | 'em_andamento' 
+  | 'realizada' 
+  | 'cancelada' 
+  | 'reagendada';
+
 export type AtividadeType = 'visita' | 'proposta' | 'analise';
+
+export interface Checkpoint {
+  id: string;
+  status: string;
+  label: string;
+  descricao?: string;
+  data: string;
+  usuario?: string;
+}
 
 export interface Proposta {
   id: string;
@@ -11,6 +36,7 @@ export interface Proposta {
   dataVencimento: string;
   descricao?: string;
   observacoes?: string;
+  checkpoints?: Checkpoint[];
 }
 
 export interface Visita {
@@ -21,6 +47,7 @@ export interface Visita {
   status: VisitaStatus;
   endereco?: string;
   observacoes?: string;
+  checkpoints?: Checkpoint[];
 }
 
 export interface Atividade {

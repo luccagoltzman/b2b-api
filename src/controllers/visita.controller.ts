@@ -7,9 +7,28 @@ const visitaSchema = z.object({
   cliente: z.string().min(1, 'Cliente é obrigatório'),
   data: z.string().regex(/^\d{4}-\d{2}-\d{2}/, 'Data deve estar no formato YYYY-MM-DD'),
   hora: z.string().regex(/^\d{2}:\d{2}$/, 'Hora deve estar no formato HH:MM'),
-  status: z.enum(['agendada', 'realizada', 'cancelada', 'reagendada']).optional(),
+  status: z.enum([
+    'agendada',
+    'confirmada',
+    'em_andamento',
+    'realizada',
+    'cancelada',
+    'reagendada',
+  ]).optional(),
   endereco: z.string().optional(),
   observacoes: z.string().optional(),
+});
+
+const statusUpdateSchema = z.object({
+  status: z.enum([
+    'agendada',
+    'confirmada',
+    'em_andamento',
+    'realizada',
+    'cancelada',
+    'reagendada',
+  ]),
+  descricao: z.string().optional(),
 });
 
 const visitaUpdateSchema = visitaSchema.partial();
@@ -72,11 +91,23 @@ export class VisitaController {
     }
   };
 
+  atualizarStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { status, descricao } = statusUpdateSchema.parse(req.body);
+
+      const visita = await this.visitaService.atualizarStatus(id, status, descricao);
+      res.json(visita);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   deletar = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
 
-      const visitaExistente = await this.visitaService.buscarPorId(id);
+      const visitaExistente = await this.visitaService.buscarPorId(id, false);
       if (!visitaExistente) {
         throw new AppError('Visita não encontrada', 'NOT_FOUND', 404);
       }

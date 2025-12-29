@@ -10,6 +10,7 @@ router.get('/', propostaController.listar);
 router.get('/:id', propostaController.buscarPorId);
 router.post('/gerar-com-ia', analiseController.gerarPropostaComIA);
 router.post('/', propostaController.criar);
+router.post('/:id/status', propostaController.atualizarStatus);
 router.put('/:id', propostaController.atualizar);
 router.delete('/:id', propostaController.deletar);
 
