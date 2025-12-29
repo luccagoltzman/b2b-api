@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Proposta {
+  id            String   @id @default(uuid())
+  cliente       String
+  valor         Float
+  status        String   // 'pendente' | 'aprovada' | 'rejeitada' | 'enviada'
+  dataCriacao   DateTime @default(now())
+  dataVencimento DateTime
+  descricao     String?  @db.Text
+  observacoes   String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("propostas")
+}
+
+model Visita {
+  id          String   @id @default(uuid())
+  cliente     String
+  data        DateTime
+  hora        String
+  status      String   // 'agendada' | 'realizada' | 'cancelada' | 'reagendada'
+  endereco    String?
+  observacoes String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("visitas")
+}
+
+model Atividade {
+  id          String   @id @default(uuid())
+  type        String   // 'visita' | 'proposta' | 'analise'
+  description String   @db.Text
+  timestamp   DateTime @default(now())
+  status      String
+  createdAt   DateTime @default(now())
+
+  @@map("atividades")
+}
+
