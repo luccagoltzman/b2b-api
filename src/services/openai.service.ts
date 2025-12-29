@@ -1,9 +1,17 @@
 import OpenAI from 'openai';
+import dotenv from 'dotenv';
 import { config } from '../config/env';
 
-const openai = config.openaiApiKey
-  ? new OpenAI({ apiKey: config.openaiApiKey })
-  : null;
+// Função para obter instância do OpenAI com a chave atual
+const getOpenAI = (): OpenAI | null => {
+  // Recarrega variáveis de ambiente
+  dotenv.config();
+  const apiKey = process.env.OPENAI_API_KEY || config.openaiApiKey;
+  if (!apiKey || apiKey === 'sua_chave_api_openai_aqui') {
+    return null;
+  }
+  return new OpenAI({ apiKey });
+};
 
 const PROMPTS = {
   performance: `Você é um especialista em análise comercial B2B. Analise os seguintes dados de um representante comercial que negocia com redes de supermercados e forneça insights acionáveis sobre performance, pontos fortes, áreas de melhoria e recomendações estratégicas.
@@ -72,6 +80,7 @@ export class OpenAIService {
     tipo: 'performance' | 'concorrencia' | 'tendencia' | 'oportunidade',
     dados: string
   ): Promise<string> {
+    const openai = getOpenAI();
     if (!openai) {
       throw new Error('OpenAI API não configurada. Configure OPENAI_API_KEY no arquivo .env');
     }
@@ -111,6 +120,7 @@ export class OpenAIService {
     observacoes?: string;
     valorSugerido?: number;
   }> {
+    const openai = getOpenAI();
     if (!openai) {
       throw new Error('OpenAI API não configurada. Configure OPENAI_API_KEY no arquivo .env');
     }
