@@ -210,5 +210,165 @@ Responda em formato JSON com as chaves: descricao, observacoes (opcional), valor
       throw new Error(`Erro ao gerar proposta: ${error.message || 'Erro desconhecido'}`);
     }
   }
+
+  async gerarPropostaCompleta(dadosBasicos: {
+    cliente: string;
+    produto: string;
+    marca: string;
+    unidadeMedida: string;
+    valorUnitario: number;
+    quantidade: number;
+  }): Promise<{
+    categoria: string;
+    desconto?: number;
+    descontoTipo?: 'percentual' | 'valor';
+    condicoesPagamento: string;
+    prazoEntrega: string;
+    estrategiaRepresentacao: string;
+    publicoAlvo: string;
+    diferenciaisCompetitivos: string;
+    descricao: string;
+    observacoes: string;
+  }> {
+    const openai = getOpenAI();
+    if (!openai) {
+      throw new Error('OpenAI API não configurada. Configure OPENAI_API_KEY no arquivo .env');
+    }
+
+    const valorTotal = dadosBasicos.valorUnitario * dadosBasicos.quantidade;
+
+    const prompt = `Você é um especialista em propostas comerciais B2B para representantes comerciais que negociam com grandes redes de supermercados.
+
+Com base nas seguintes informações básicas, gere uma proposta comercial completa e profissional:
+
+INFORMAÇÕES BÁSICAS:
+- Cliente: ${dadosBasicos.cliente}
+- Produto: ${dadosBasicos.produto}
+- Marca: ${dadosBasicos.marca}
+- Unidade de Medida: ${dadosBasicos.unidadeMedida}
+- Valor Unitário: R$ ${dadosBasicos.valorUnitario.toFixed(2)}
+- Quantidade: ${dadosBasicos.quantidade}
+- Valor Total (sem desconto): R$ ${valorTotal.toFixed(2)}
+
+INSTRUÇÕES:
+1. Categoria do Produto: Identifique e sugira a categoria mais adequada (ex: Alimentos, Bebidas, Limpeza, Higiene, etc)
+
+2. Desconto: Sugira um desconto competitivo e estratégico (percentual ou valor fixo) que seja atraente mas mantenha margem de lucro. Justifique a escolha.
+
+3. Condições de Pagamento: Sugira condições comerciais atrativas e competitivas para o mercado B2B (ex: "30/60/90 dias", "Boleto à vista com desconto", etc)
+
+4. Prazo de Entrega: Sugira um prazo realista e competitivo baseado no tipo de produto e quantidade
+
+5. Estratégia de Representação: Crie uma estratégia completa e detalhada (3-5 parágrafos) incluindo:
+   - Ações promocionais sugeridas
+   - Parcerias e eventos
+   - Material de PDV (Ponto de Venda)
+   - Treinamento de equipe
+   - Campanhas sazonais (se aplicável)
+   - Outras ações estratégicas relevantes
+
+6. Público-Alvo: Identifique o público-alvo ideal para este produto (ex: "Famílias classe A/B", "Jovens adultos", etc)
+
+7. Diferenciais Competitivos: Liste os principais diferenciais deste produto em relação à concorrência (5-7 itens separados por vírgula)
+
+8. Descrição: Crie uma descrição completa e profissional da proposta (2-3 parágrafos) destacando:
+   - O produto e sua qualidade
+   - A oportunidade de negócio
+   - Benefícios para o cliente
+   - Potencial de crescimento
+
+9. Observações: Inclua observações importantes, avisos sobre valores, recomendações estratégicas e alertas relevantes (use ⚠️ para avisos importantes)
+
+IMPORTANTE:
+- Seja específico e profissional
+- Use linguagem comercial adequada para B2B
+- Considere o contexto de grandes redes de supermercados
+- Sugira valores e estratégias realistas
+- Destaque oportunidades e riscos quando relevante
+- Formate a resposta em JSON estruturado
+
+Retorne APENAS um JSON válido com a seguinte estrutura:
+{
+  "categoria": "string",
+  "desconto": number (opcional, se não sugerir desconto omita este campo),
+  "descontoTipo": "percentual" ou "valor" (obrigatório se desconto for fornecido),
+  "condicoesPagamento": "string",
+  "prazoEntrega": "string",
+  "estrategiaRepresentacao": "string (texto completo)",
+  "publicoAlvo": "string",
+  "diferenciaisCompetitivos": "string (texto completo com itens separados por vírgula)",
+  "descricao": "string (texto completo)",
+  "observacoes": "string (texto completo com avisos)"
+}`;
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um especialista em propostas comerciais B2B para representantes que negociam com grandes redes de supermercados. Sempre responda APENAS com JSON válido, sem texto adicional antes ou depois do JSON.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const content = completion.choices[0]?.message?.content || '{}';
+      
+      // Tentar extrair JSON se houver texto adicional
+      let jsonContent = content.trim();
+      
+      // Remover markdown code blocks se existirem
+      if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      // Tentar encontrar JSON no conteúdo
+      const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonContent = jsonMatch[0];
+      }
+
+      const parsed = JSON.parse(jsonContent);
+
+      // Validar campos obrigatórios
+      if (!parsed.categoria || !parsed.condicoesPagamento || !parsed.prazoEntrega || 
+          !parsed.estrategiaRepresentacao || !parsed.publicoAlvo || 
+          !parsed.diferenciaisCompetitivos || !parsed.descricao || !parsed.observacoes) {
+        throw new Error('Resposta da IA incompleta. Alguns campos obrigatórios estão faltando.');
+      }
+
+      // Validar desconto se fornecido
+      if (parsed.desconto !== undefined && parsed.desconto > 0 && !parsed.descontoTipo) {
+        parsed.descontoTipo = 'percentual'; // Padrão se não especificado
+      }
+
+      return {
+        categoria: parsed.categoria,
+        desconto: parsed.desconto,
+        descontoTipo: parsed.descontoTipo,
+        condicoesPagamento: parsed.condicoesPagamento,
+        prazoEntrega: parsed.prazoEntrega,
+        estrategiaRepresentacao: parsed.estrategiaRepresentacao,
+        publicoAlvo: parsed.publicoAlvo,
+        diferenciaisCompetitivos: parsed.diferenciaisCompetitivos,
+        descricao: parsed.descricao,
+        observacoes: parsed.observacoes,
+      };
+    } catch (error: any) {
+      console.error('Erro ao gerar proposta completa com OpenAI:', error);
+      
+      if (error instanceof SyntaxError || error.message?.includes('JSON')) {
+        throw new Error('Erro ao processar resposta da IA: formato JSON inválido');
+      }
+      
+      throw new Error(`Erro ao gerar proposta: ${error.message || 'Erro desconhecido'}`);
+    }
+  }
 }
 

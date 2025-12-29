@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AnaliseService } from '../services/analise.service';
 import { AppError } from '../middleware/errorHandler';
-import { z } from 'zod';
+import { z, ZodError } from 'zod';
 import { OpenAIService } from '../services/openai.service';
 import { PropostaService } from '../services/proposta.service';
 
@@ -12,8 +12,23 @@ const analiseSchema = z.object({
 
 const propostaGerarSchema = z.object({
   cliente: z.string().min(1, 'Cliente é obrigatório'),
-  valor: z.number().positive().optional(),
-  contexto: z.string().optional(),
+  produto: z.string().min(1, 'Produto é obrigatório'),
+  marca: z.string().min(1, 'Marca é obrigatória'),
+  unidadeMedida: z.enum([
+    'unidade',
+    'kg',
+    'g',
+    'litro',
+    'ml',
+    'caixa',
+    'pacote',
+    'fardo',
+    'duzia',
+    'metro',
+    'outro',
+  ]),
+  valorUnitario: z.number().positive('Valor unitário deve ser positivo'),
+  quantidade: z.number().positive('Quantidade deve ser positiva'),
 });
 
 export class AnaliseController {
@@ -41,29 +56,69 @@ export class AnaliseController {
   gerarPropostaComIA = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dadosBasicos = propostaGerarSchema.parse(req.body);
-      const propostaGerada = await this.openaiService.gerarProposta(dadosBasicos);
+      
+      // Gerar proposta completa com IA
+      const propostaGerada = await this.openaiService.gerarPropostaCompleta(dadosBasicos);
 
-      // Se foi fornecido valor, usar ele; caso contrário, usar o sugerido pela IA
-      const valorFinal = dadosBasicos.valor || propostaGerada.valorSugerido || 0;
+      // Calcular valor total
+      const valorTotal = dadosBasicos.valorUnitario * dadosBasicos.quantidade;
+      let valorFinal = valorTotal;
 
-      // Criar a proposta no banco de dados
-      const proposta = await this.propostaService.criar({
-        cliente: dadosBasicos.cliente,
-        valor: valorFinal,
-        status: 'pendente',
-        dataVencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 dias a partir de hoje
+      // Aplicar desconto se fornecido pela IA
+      if (propostaGerada.desconto !== undefined && propostaGerada.desconto > 0) {
+        if (propostaGerada.descontoTipo === 'percentual') {
+          valorFinal = valorTotal * (1 - propostaGerada.desconto / 100);
+        } else if (propostaGerada.descontoTipo === 'valor') {
+          valorFinal = Math.max(0, valorTotal - propostaGerada.desconto);
+        }
+      }
+
+      // Arredondar para 2 casas decimais
+      valorFinal = Math.round(valorFinal * 100) / 100;
+
+      // Retornar resposta com todos os campos gerados
+      res.json({
+        categoria: propostaGerada.categoria,
+        desconto: propostaGerada.desconto,
+        descontoTipo: propostaGerada.descontoTipo,
+        condicoesPagamento: propostaGerada.condicoesPagamento,
+        prazoEntrega: propostaGerada.prazoEntrega,
+        estrategiaRepresentacao: propostaGerada.estrategiaRepresentacao,
+        publicoAlvo: propostaGerada.publicoAlvo,
+        diferenciaisCompetitivos: propostaGerada.diferenciaisCompetitivos,
         descricao: propostaGerada.descricao,
         observacoes: propostaGerada.observacoes,
+        valor: valorFinal,
       });
-
-      res.status(201).json({
-        proposta,
-        sugestoesIA: {
-          valorSugerido: propostaGerada.valorSugerido,
-          observacoes: propostaGerada.observacoes,
-        },
-      });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao gerar proposta com IA:', error);
+      
+      // Tratar erros específicos
+      if (error instanceof ZodError) {
+        const camposFaltando = error.errors.map(e => e.path.join('.')).join(', ');
+        throw new AppError(
+          `Campos obrigatórios faltando: ${camposFaltando}`,
+          'VALIDATION_ERROR',
+          400
+        );
+      }
+      
+      if (error.message?.includes('OpenAI')) {
+        throw new AppError(
+          'Erro ao gerar proposta com IA. Verifique a configuração da API OpenAI.',
+          'OPENAI_ERROR',
+          500
+        );
+      }
+      
+      if (error.message?.includes('JSON')) {
+        throw new AppError(
+          'Erro ao processar resposta da IA. A resposta não está no formato esperado. Tente novamente.',
+          'PARSE_ERROR',
+          500
+        );
+      }
+      
       next(error);
     }
   };
