@@ -326,5 +326,77 @@ ${propostasVencendo.map((p: any) =>
 
     return resultado;
   }
+
+  async obterInsightsProdutos() {
+    const propostas = await prisma.proposta.findMany({
+      include: {
+        checkpoints: {
+          orderBy: { data: 'desc' },
+        },
+      },
+      orderBy: { dataCriacao: 'desc' },
+    });
+
+    // Análise de produtos e rentabilidade
+    const produtosPorMarca = propostas.reduce((acc: Record<string, any[]>, p: any) => {
+      if (p.produto && p.marca) {
+        const chave = `${p.produto} - ${p.marca}`;
+        if (!acc[chave]) acc[chave] = [];
+        acc[chave].push(p);
+      }
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const produtosAnalise = Object.entries(produtosPorMarca).map(([produtoMarca, propostasProduto]) => {
+      const propostasArray = propostasProduto as any[];
+      const totalPropostas = propostasArray.length;
+      const aprovadas = propostasArray.filter((p: any) => p.status === 'aprovada').length;
+      const valorTotal = propostasArray.reduce((sum: number, p: any) => sum + (p.valor || 0), 0);
+      const valorTotalAprovado = propostasArray
+        .filter((p: any) => p.status === 'aprovada')
+        .reduce((sum: number, p: any) => sum + (p.valorCompra || p.valor || 0), 0);
+      const quantidadeTotal = propostasArray.reduce((sum: number, p: any) => sum + (p.quantidade || 0), 0);
+      const quantidadeAdquiridaTotal = propostasArray
+        .filter((p: any) => p.status === 'aprovada')
+        .reduce((sum: number, p: any) => sum + (p.quantidadeAdquirida || 0), 0);
+      const valorMedio = totalPropostas > 0 ? valorTotal / totalPropostas : 0;
+      const taxaAprovacao = totalPropostas > 0 ? (aprovadas / totalPropostas) * 100 : 0;
+      
+      // Calcular margem de lucro (se houver dados de compra)
+      const propostasComDadosCompra = propostasArray.filter((p: any) => 
+        p.status === 'aprovada' && p.valorCompra && p.valor
+      );
+      const margemLucro = propostasComDadosCompra.length > 0
+        ? propostasComDadosCompra.reduce((sum: number, p: any) => {
+            const margem = ((p.valor - p.valorCompra) / p.valorCompra) * 100;
+            return sum + margem;
+          }, 0) / propostasComDadosCompra.length
+        : 0;
+
+      // Separar produto e marca
+      const [produto, marca] = produtoMarca.split(' - ');
+
+      return {
+        produto,
+        marca,
+        categoria: propostasArray[0]?.categoria || 'N/A',
+        totalPropostas,
+        aprovadas,
+        rejeitadas: propostasArray.filter((p: any) => p.status === 'rejeitada').length,
+        valorTotal,
+        valorTotalAprovado,
+        quantidadeTotal,
+        quantidadeAdquiridaTotal,
+        valorMedio,
+        taxaAprovacao,
+        margemLucro: margemLucro > 0 ? margemLucro : null,
+      };
+    });
+
+    // Ordenar por valor total aprovado (maior primeiro)
+    produtosAnalise.sort((a, b) => b.valorTotalAprovado - a.valorTotalAprovado);
+
+    return produtosAnalise;
+  }
 }
 

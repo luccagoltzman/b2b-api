@@ -125,5 +125,14 @@ export class AnaliseController {
       next(error);
     }
   };
+
+  obterInsightsProdutos = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const insights = await this.analiseService.obterInsightsProdutos();
+      res.json(insights);
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
