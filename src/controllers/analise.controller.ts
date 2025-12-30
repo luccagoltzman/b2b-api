@@ -31,6 +31,14 @@ const propostaGerarSchema = z.object({
   quantidade: z.number().positive('Quantidade deve ser positiva'),
 });
 
+const analisarProdutoSchema = z.object({
+  produto: z.string().min(1, 'Produto é obrigatório'),
+  marca: z.string().optional(),
+  categoria: z.string().optional(),
+  regiao: z.string().optional(),
+  pergunta: z.string().optional(), // Pergunta específica sobre o produto
+});
+
 export class AnaliseController {
   private analiseService: AnaliseService;
   private openaiService: OpenAIService;
@@ -131,6 +139,33 @@ export class AnaliseController {
       const insights = await this.analiseService.obterInsightsProdutos();
       res.json(insights);
     } catch (error) {
+      next(error);
+    }
+  };
+
+  analisarProduto = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dados = analisarProdutoSchema.parse(req.body);
+      
+      // Gerar análise específica do produto usando IA
+      const resultado = await this.analiseService.analisarProduto(
+        dados.produto,
+        dados.marca,
+        dados.categoria,
+        dados.regiao,
+        dados.pergunta
+      );
+
+      res.json({ resultado });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const camposFaltando = error.errors.map(e => e.path.join('.')).join(', ');
+        throw new AppError(
+          `Campos inválidos: ${camposFaltando}`,
+          'VALIDATION_ERROR',
+          400
+        );
+      }
       next(error);
     }
   };

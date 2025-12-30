@@ -145,3 +145,101 @@ model AnaliseSaida {
   @@map("analises_saida")
 }
 
+// Dados de Mercado - Preços de Referência
+model PrecoMercado {
+  id                String   @id @default(uuid())
+  produto           String
+  marca             String?
+  categoria         String?
+  regiao            String?  // Estado ou região (ex: "SP", "Sudeste", "Nacional")
+  precoMedio        Float
+  precoMinimo       Float?
+  precoMaximo       Float?
+  unidadeMedida     String?  @default("unidade")
+  fonte             String?  // Fonte dos dados (ex: "pesquisa", "fornecedor", "concorrência")
+  dataColeta        DateTime @default(now())
+  observacoes       String?  @db.Text
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([produto])
+  @@index([marca])
+  @@index([categoria])
+  @@index([regiao])
+  @@index([ativo])
+  @@map("precos_mercado")
+}
+
+// Produtos Mais Vendidos por Região
+model ProdutoVendidoRegiao {
+  id                String   @id @default(uuid())
+  produto           String
+  marca             String?
+  categoria         String?
+  regiao            String   // Estado ou região
+  posicaoRanking    Int      // Posição no ranking (1 = mais vendido)
+  volumeVendas      Float?   // Volume estimado de vendas
+  participacaoMercado Float? // Percentual de participação no mercado
+  periodo           String   // Período da análise (ex: "2024-01", "2024-Q1")
+  fonte             String?  // Fonte dos dados
+  observacoes       String?  @db.Text
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([produto])
+  @@index([marca])
+  @@index([categoria])
+  @@index([regiao])
+  @@index([periodo])
+  @@index([ativo])
+  @@map("produtos_vendidos_regiao")
+}
+
+// Produtos Mais Pedidos por Supermercados
+model ProdutoPedidoSupermercado {
+  id                String   @id @default(uuid())
+  produto           String
+  marca             String?
+  categoria         String?
+  tipoSupermercado  String?  // Tipo de rede (ex: "grande", "médio", "pequeno")
+  frequenciaPedidos Int      // Frequência de pedidos (1 = mais pedido)
+  demandaEstimada  Float?   // Demanda estimada
+  sazonalidade      String?  // Sazonalidade (ex: "verão", "inverno", "ano todo")
+  periodo           String   // Período da análise
+  fonte             String?  // Fonte dos dados
+  observacoes       String?  @db.Text
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([produto])
+  @@index([marca])
+  @@index([categoria])
+  @@index([tipoSupermercado])
+  @@index([periodo])
+  @@index([ativo])
+  @@map("produtos_pedidos_supermercado")
+}
+
+// Benchmarks do Setor
+model BenchmarkSetor {
+  id                String   @id @default(uuid())
+  categoria         String?  // Categoria de produto
+  tipoMetrica       String   // Tipo de métrica (ex: "taxa_conversao", "ticket_medio", "margem_lucro")
+  valorBenchmark    Float    // Valor do benchmark
+  unidade           String?  // Unidade (ex: "percentual", "reais")
+  descricao         String?  @db.Text
+  fonte             String?  // Fonte do benchmark
+  periodo           String?  // Período de referência
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([categoria])
+  @@index([tipoMetrica])
+  @@index([ativo])
+  @@map("benchmarks_setor")
+}
+

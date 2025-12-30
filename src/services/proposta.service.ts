@@ -141,15 +141,33 @@ export class PropostaService {
       marca: string;
       categoria: string;
       unidadeMedida: string;
+      produtoCodigo: string;
+      aliquotaIpi: number;
       valorUnitario: number;
       quantidade: number;
       desconto: number;
       descontoTipo: 'percentual' | 'valor';
+      valorFrete: number;
       condicoesPagamento: string;
       prazoEntrega: string;
+      tipoPedido: string;
+      transportadora: string;
+      informacoesAdicionais: string;
       estrategiaRepresentacao: string;
       publicoAlvo: string;
       diferenciaisCompetitivos: string;
+      clienteCnpj: string;
+      clienteEndereco: string;
+      clienteNumero: string;
+      clienteBairro: string;
+      clienteCidade: string;
+      clienteCep: string;
+      clienteEstado: string;
+      clienteTelefone: string;
+      clienteEmail: string;
+      clienteNomeFantasia: string;
+      quantidadeAdquirida: number;
+      valorCompra: number;
     }>
   ): Promise<Proposta> {
     // Buscar proposta atual para verificar mudança de status
