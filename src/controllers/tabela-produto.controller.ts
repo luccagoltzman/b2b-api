@@ -18,9 +18,18 @@ const produtoSchema = z.object({
 });
 
 // Schema de validação para criação de tabela
+const clienteSchema = z.union([
+  z.string().min(1, 'Nome do cliente é obrigatório'),
+  z.object({
+    nome: z.string().min(1, 'Nome do cliente é obrigatório'),
+    email: z.string().email('Email inválido').optional().or(z.literal('')),
+    telefone: z.string().optional(),
+  }),
+]);
+
 const criarTabelaSchema = z.object({
   nome: z.string().min(1, 'Nome da tabela é obrigatório'),
-  clientes: z.array(z.string().min(1, 'Nome do cliente é obrigatório')).min(1, 'Pelo menos um cliente é obrigatório'),
+  clientes: z.array(clienteSchema).min(1, 'Pelo menos um cliente é obrigatório'),
   produtos: z.array(produtoSchema).min(1, 'Pelo menos um produto é obrigatório'),
   condicoesPagamento: z.string().optional(),
   prazoEntrega: z.string().optional(),
@@ -35,6 +44,24 @@ const atualizarTabelaSchema = criarTabelaSchema.partial();
 // Schema de validação para envio de tabela
 const enviarTabelaSchema = z.object({
   clientes: z.array(z.string()).optional(),
+  metodo: z.enum(['email', 'whatsapp', 'manual']).optional(),
+  configuracao: z
+    .object({
+      email: z
+        .object({
+          assunto: z.string().optional(),
+          corpo: z.string().optional(),
+        })
+        .optional(),
+      whatsapp: z
+        .object({
+          mensagem: z.string().optional(),
+        })
+        .optional(),
+      arquivoPdfUrl: z.string().url().optional(),
+      arquivoExcelUrl: z.string().url().optional(),
+    })
+    .optional(),
 });
 
 // Schema de validação para geração de proposta
@@ -146,18 +173,15 @@ export class TabelaProdutoController {
 
   /**
    * POST /api/tabelas-produtos/:id/enviar
-   * Marca a tabela como enviada
+   * Marca a tabela como enviada e cria registros de envio
    */
   enviar = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { clientes } = enviarTabelaSchema.parse(req.body);
+      const { clientes, metodo, configuracao } = enviarTabelaSchema.parse(req.body);
 
-      const tabela = await this.tabelaProdutoService.enviar(id, clientes);
-      res.json({
-        message: 'Tabela enviada com sucesso',
-        tabela,
-      });
+      const resultado = await this.tabelaProdutoService.enviar(id, clientes, metodo, configuracao);
+      res.json(resultado);
     } catch (error) {
       next(error);
     }

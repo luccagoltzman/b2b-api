@@ -66,12 +66,14 @@ model Proposta {
   // Campos - Associação com Tabela de Produtos
   tabelaId                String?      // ID da tabela que gerou esta proposta
   geradaAutomaticamente   Boolean      @default(false) // Indica se foi gerada automaticamente
+  notaRetornoId           String?      // ID da nota de retorno que gerou esta proposta
   
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
   checkpoints             Checkpoint[]
   analisesSaida           AnaliseSaida[]
   tabelaProduto           TabelaProduto? @relation(fields: [tabelaId], references: [id])
+  notaRetorno             NotaRetorno?
 
   @@index([categoria])
   @@index([marca])
@@ -267,6 +269,8 @@ model TabelaProduto {
   clientes          TabelaCliente[]
   produtos          TabelaProdutoItem[]
   propostas         Proposta[]
+  envios            TabelaEnvio[]
+  notasRetorno      NotaRetorno[]
 
   @@index([representanteId])
   @@index([status])
@@ -279,7 +283,11 @@ model TabelaCliente {
   id                String            @id @default(uuid())
   tabelaId          String
   clienteNome       String
-  statusEnvio       String            @default("pendente") // 'pendente' | 'enviada' | 'respondida'
+  clienteEmail      String?           // Para envio por email
+  clienteTelefone    String?           // Para envio por WhatsApp
+  statusEnvio       String            @default("pendente") // 'pendente' | 'enviada' | 'entregue' | 'lida' | 'respondida'
+  dataEnvio         DateTime?
+  metodoEnvio       String?           // 'email' | 'whatsapp' | 'manual'
   createdAt         DateTime          @default(now())
   
   tabela            TabelaProduto     @relation(fields: [tabelaId], references: [id], onDelete: Cascade)
@@ -311,4 +319,65 @@ model TabelaProdutoItem {
   @@index([produto])
   @@index([marca])
   @@map("tabela_produtos")
+}
+
+// Histórico de envios (preparação para Email/WhatsApp)
+model TabelaEnvio {
+  id                String            @id @default(uuid())
+  tabelaId          String
+  clienteNome       String
+  metodoEnvio       String            // 'email' | 'whatsapp' | 'manual'
+  destinatario      String            // email ou telefone
+  status            String            @default("pendente") // 'pendente' | 'enviado' | 'entregue' | 'lida' | 'erro'
+  arquivoPdfUrl     String?           @db.Text
+  arquivoExcelUrl   String?           @db.Text
+  mensagemId        String?           // ID da mensagem no WhatsApp/Email (para rastreamento)
+  dataEnvio         DateTime?
+  dataEntrega       DateTime?
+  dataLeitura       DateTime?
+  erro              String?           @db.Text // Mensagem de erro se houver
+  createdAt         DateTime          @default(now())
+  
+  tabela            TabelaProduto     @relation(fields: [tabelaId], references: [id], onDelete: Cascade)
+
+  @@index([tabelaId])
+  @@index([clienteNome])
+  @@index([status])
+  @@map("tabela_envios")
+}
+
+// Notas de retorno (histórico)
+model NotaRetorno {
+  id                String            @id @default(uuid())
+  tabelaId          String
+  clienteNome       String
+  propostaId        String?           @unique // Proposta gerada a partir desta nota (unique para relação one-to-one)
+  dataGeracao       DateTime          @default(now())
+  createdAt         DateTime          @default(now())
+  
+  tabela            TabelaProduto     @relation(fields: [tabelaId], references: [id], onDelete: Cascade)
+  proposta          Proposta?         @relation(fields: [propostaId], references: [id])
+  produtos          NotaRetornoProduto[]
+
+  @@index([tabelaId])
+  @@index([clienteNome])
+  @@map("notas_retorno")
+}
+
+// Produtos selecionados na nota de retorno
+model NotaRetornoProduto {
+  id                String            @id @default(uuid())
+  notaRetornoId     String
+  produtoId         String            // ID do produto na tabela
+  produtoNome       String
+  quantidade        Int
+  valorUnitario     Float
+  valorTotal         Float
+  createdAt         DateTime          @default(now())
+  
+  notaRetorno       NotaRetorno      @relation(fields: [notaRetornoId], references: [id], onDelete: Cascade)
+
+  @@index([notaRetornoId])
+  @@index([produtoId])
+  @@map("nota_retorno_produtos")
 }

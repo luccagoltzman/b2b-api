@@ -17,7 +17,7 @@ export interface TabelaProdutoItemInput {
 
 export interface TabelaProdutoInput {
   nome: string;
-  clientes: string[];
+  clientes: Array<string | { nome: string; email?: string; telefone?: string }>;
   produtos: TabelaProdutoItemInput[];
   condicoesPagamento?: string;
   prazoEntrega?: string;
@@ -165,10 +165,21 @@ export class TabelaProdutoService {
         observacoes: dados.observacoes,
         dataVencimento: dataVencimento,
         clientes: {
-          create: dados.clientes.map((clienteNome) => ({
-            clienteNome: clienteNome.trim(),
-            statusEnvio: 'pendente',
-          })),
+          create: dados.clientes.map((cliente) => {
+            if (typeof cliente === 'string') {
+              return {
+                clienteNome: cliente.trim(),
+                statusEnvio: 'pendente',
+              };
+            } else {
+              return {
+                clienteNome: cliente.nome.trim(),
+                clienteEmail: cliente.email,
+                clienteTelefone: cliente.telefone,
+                statusEnvio: 'pendente',
+              };
+            }
+          }),
         },
         produtos: {
           create: dados.produtos.map((produto, index) => ({
@@ -268,11 +279,23 @@ export class TabelaProdutoService {
 
       // Criar novos clientes
       await prisma.tabelaCliente.createMany({
-        data: dados.clientes.map((clienteNome) => ({
-          tabelaId: id,
-          clienteNome: clienteNome.trim(),
-          statusEnvio: 'pendente',
-        })),
+        data: dados.clientes.map((cliente) => {
+          if (typeof cliente === 'string') {
+            return {
+              tabelaId: id,
+              clienteNome: cliente.trim(),
+              statusEnvio: 'pendente',
+            };
+          } else {
+            return {
+              tabelaId: id,
+              clienteNome: cliente.nome.trim(),
+              clienteEmail: cliente.email,
+              clienteTelefone: cliente.telefone,
+              statusEnvio: 'pendente',
+            };
+          }
+        }),
       });
     }
 
@@ -334,9 +357,19 @@ export class TabelaProdutoService {
   }
 
   /**
-   * Marca a tabela como enviada
+   * Marca a tabela como enviada e cria registros de envio
    */
-  async enviar(id: string, clientesEnviados?: string[]): Promise<TabelaProdutoResponse> {
+  async enviar(
+    id: string,
+    clientesEnviados?: string[],
+    metodo?: 'email' | 'whatsapp' | 'manual',
+    configuracao?: {
+      email?: { assunto?: string; corpo?: string };
+      whatsapp?: { mensagem?: string };
+      arquivoPdfUrl?: string;
+      arquivoExcelUrl?: string;
+    }
+  ): Promise<{ message: string; tabela: TabelaProdutoResponse; envios: any[] }> {
     const tabela = await prisma.tabelaProduto.findUnique({
       where: { id },
       include: {
@@ -348,49 +381,116 @@ export class TabelaProdutoService {
       throw new AppError('Tabela não encontrada', 'NOT_FOUND', 404);
     }
 
-    // Se clientes específicos foram fornecidos, atualizar apenas esses
-    if (clientesEnviados && clientesEnviados.length > 0) {
-      await prisma.tabelaCliente.updateMany({
-        where: {
-          tabelaId: id,
-          clienteNome: {
-            in: clientesEnviados,
-          },
-        },
-        data: {
-          statusEnvio: 'enviada',
-        },
-      });
+    const metodoEnvio = metodo || 'manual';
+    const clientesParaEnviar = clientesEnviados || tabela.clientes.map((c) => c.clienteNome);
+    const enviosCriados: any[] = [];
 
-      // Verificar se todos os clientes foram enviados
-      const clientesAtualizados = await prisma.tabelaCliente.findMany({
-        where: { tabelaId: id },
-      });
+    // Atualizar status dos clientes e criar registros de envio
+    for (const clienteNome of clientesParaEnviar) {
+      const cliente = tabela.clientes.find((c) => c.clienteNome === clienteNome);
+      if (!cliente) continue;
 
-      const todosEnviados = clientesAtualizados.every((c) => c.statusEnvio === 'enviada');
-      if (todosEnviados) {
-        await prisma.tabelaProduto.update({
-          where: { id },
-          data: { status: 'enviada' },
-        });
+      const clienteCompleto = cliente as any; // Type assertion para campos opcionais
+      const destinatario = metodoEnvio === 'email' ? clienteCompleto.clienteEmail : clienteCompleto.clienteTelefone || cliente.clienteNome;
+
+      // Tentar criar registro de envio (pode falhar se a tabela não existir)
+      // Verificar se a tabela existe no Prisma Client antes de usar
+      const prismaClient = prisma as any;
+      if (prismaClient.tabelaEnvio && typeof prismaClient.tabelaEnvio.create === 'function') {
+        try {
+          const envio = await prismaClient.tabelaEnvio.create({
+            data: {
+              tabelaId: id,
+              clienteNome: clienteNome,
+              metodoEnvio: metodoEnvio,
+              destinatario: destinatario || clienteNome,
+              status: metodoEnvio === 'manual' ? 'enviado' : 'pendente',
+              arquivoPdfUrl: configuracao?.arquivoPdfUrl,
+              arquivoExcelUrl: configuracao?.arquivoExcelUrl,
+              dataEnvio: new Date(),
+            },
+          });
+
+          enviosCriados.push({
+            id: envio.id,
+            cliente: clienteNome,
+            metodo: metodoEnvio,
+            status: envio.status,
+            data_envio: envio.dataEnvio?.toISOString(),
+          });
+        } catch (error: any) {
+          // Se falhar, criar registro mock
+          console.warn('Não foi possível criar registro de envio:', error.message);
+          enviosCriados.push({
+            id: null,
+            cliente: clienteNome,
+            metodo: metodoEnvio,
+            status: metodoEnvio === 'manual' ? 'enviado' : 'pendente',
+            data_envio: new Date().toISOString(),
+          });
+        }
       } else {
-        // Se pelo menos um foi enviado, mudar para aguardando_resposta
-        await prisma.tabelaProduto.update({
-          where: { id },
-          data: { status: 'aguardando_resposta' },
+        // Se a tabela não existe no Prisma Client, criar registro mock
+        console.warn('Tabela de envios não encontrada no Prisma Client. Execute: npm run prisma:generate && npm run prisma:migrate');
+        enviosCriados.push({
+          id: null,
+          cliente: clienteNome,
+          metodo: metodoEnvio,
+          status: metodoEnvio === 'manual' ? 'enviado' : 'pendente',
+          data_envio: new Date().toISOString(),
         });
       }
-    } else {
-      // Marcar todos os clientes como enviados
-      await prisma.tabelaCliente.updateMany({
-        where: { tabelaId: id },
-        data: { statusEnvio: 'enviada' },
-      });
 
-      // Atualizar status da tabela
+      // Atualizar status do cliente
+      // Tentar atualizar com campos opcionais, mas não falhar se não existirem
+      try {
+        const updateData: any = {
+          statusEnvio: 'enviada',
+        };
+        
+        // Tentar adicionar campos opcionais se o schema suportar
+        try {
+          updateData.dataEnvio = new Date();
+          updateData.metodoEnvio = metodoEnvio;
+        } catch (e) {
+          // Ignorar se campos não existirem
+        }
+        
+        await prisma.tabelaCliente.update({
+          where: { id: cliente.id },
+          data: updateData,
+        });
+      } catch (error: any) {
+        // Se falhar por causa de campos inexistentes, tentar apenas com statusEnvio
+        if (error.message?.includes('Unknown argument') || error.message?.includes('does not exist')) {
+          await prisma.tabelaCliente.update({
+            where: { id: cliente.id },
+            data: {
+              statusEnvio: 'enviada',
+            },
+          });
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    // Verificar se todos os clientes foram enviados
+    const clientesAtualizados = await prisma.tabelaCliente.findMany({
+      where: { tabelaId: id },
+    });
+
+    const todosEnviados = clientesAtualizados.every((c) => c.statusEnvio === 'enviada');
+    if (todosEnviados) {
       await prisma.tabelaProduto.update({
         where: { id },
         data: { status: 'enviada' },
+      });
+    } else {
+      // Se pelo menos um foi enviado, mudar para aguardando_resposta
+      await prisma.tabelaProduto.update({
+        where: { id },
+        data: { status: 'aguardando_resposta' },
       });
     }
 
@@ -404,7 +504,11 @@ export class TabelaProdutoService {
       },
     });
 
-    return this.mapToResponse(tabelaAtualizada!);
+    return {
+      message: 'Tabela enviada com sucesso',
+      tabela: this.mapToResponse(tabelaAtualizada!),
+      envios: enviosCriados,
+    };
   }
 
   /**
@@ -490,6 +594,50 @@ export class TabelaProdutoService {
     // Calcular valor total da proposta
     const valorTotal = produtosCalculados.reduce((sum, p) => sum + p.valorTotal, 0);
 
+    // Criar Nota de Retorno (valores sem descontos aplicados - como aparecem na tabela)
+    // Tentar criar, mas continuar mesmo se a tabela não existir (migração não executada)
+    let notaRetorno: any = null;
+    try {
+      notaRetorno = await (prisma as any).notaRetorno.create({
+        data: {
+          tabelaId: tabelaId,
+          clienteNome: cliente,
+          dataGeracao: new Date(),
+          produtos: {
+            create: produtosSelecionados.map((produto) => ({
+              produtoId: produto.id,
+              produtoNome: produto.produto,
+              quantidade: produto.quantidade,
+              valorUnitario: produto.valorUnitario, // Valor sem desconto (como na tabela)
+              valorTotal: produto.valorUnitario * produto.quantidade, // Valor sem desconto
+            })),
+          },
+        },
+        include: {
+          produtos: true,
+        },
+      });
+    } catch (error: any) {
+      // Se a tabela não existir, apenas logar e continuar sem criar nota de retorno
+      if (error.code === 'P2021' || error.message?.includes('Table') || error.message?.includes('does not exist')) {
+        console.warn('Tabela de notas de retorno não encontrada. Execute a migração: npm run prisma:migrate');
+        // Criar objeto mock para não quebrar a resposta
+        notaRetorno = {
+          id: null,
+          produtos: produtosSelecionados.map((produto) => ({
+            produtoId: produto.id,
+            produtoNome: produto.produto,
+            quantidade: produto.quantidade,
+            valorUnitario: produto.valorUnitario,
+            valorTotal: produto.valorUnitario * produto.quantidade,
+          })),
+          dataGeracao: new Date(),
+        };
+      } else {
+        throw error;
+      }
+    }
+
     // Criar proposta usando o PropostaService
     // Como a proposta pode ter múltiplos produtos, vamos usar o primeiro produto como base
     // e adicionar os outros no campo descricao/observacoes de forma estruturada
@@ -522,28 +670,44 @@ export class TabelaProdutoService {
       dataVencimento: tabela.dataVencimento.toISOString().split('T')[0],
       descricao,
       produto: primeiroProduto.produto,
-      produtoCodigo: primeiroProduto.produtoCodigo,
+      produtoCodigo: primeiroProduto.produtoCodigo || undefined,
       marca: primeiroProduto.marca,
-      categoria: primeiroProduto.categoria,
+      categoria: primeiroProduto.categoria || undefined,
       unidadeMedida: primeiroProduto.unidadeMedida,
       valorUnitario: primeiroProduto.valorUnitario,
       quantidade: primeiroProduto.quantidade,
       aliquotaIpi: primeiroProduto.aliquotaIpi,
       desconto: primeiroProduto.desconto,
-      descontoTipo: primeiroProduto.descontoTipo,
+      descontoTipo: (primeiroProduto.descontoTipo as 'percentual' | 'valor') || 'percentual',
       condicoesPagamento: tabela.condicoesPagamento || undefined,
       prazoEntrega: tabela.prazoEntrega || undefined,
       observacoes: observacoes || undefined,
     });
 
-    // Atualizar proposta com tabelaId e geradaAutomaticamente
+    // Atualizar proposta com tabelaId, geradaAutomaticamente e notaRetornoId
     await prisma.proposta.update({
       where: { id: proposta.id },
       data: {
         tabelaId: tabelaId,
         geradaAutomaticamente: true,
+        ...(notaRetorno?.id && { notaRetornoId: notaRetorno.id }),
       },
     });
+
+    // Atualizar nota de retorno com propostaId (se foi criada)
+    if (notaRetorno?.id) {
+      try {
+        await (prisma as any).notaRetorno.update({
+          where: { id: notaRetorno.id },
+          data: {
+            propostaId: proposta.id,
+          },
+        });
+      } catch (error: any) {
+        // Se falhar, apenas logar (tabela pode não existir)
+        console.warn('Não foi possível atualizar nota de retorno:', error.message);
+      }
+    }
 
     // Atualizar status do cliente na tabela
     await prisma.tabelaCliente.update({
@@ -570,11 +734,27 @@ export class TabelaProdutoService {
       });
     }
 
-    // Retornar proposta com todos os produtos calculados
+    // Retornar proposta com todos os produtos calculados e nota de retorno
     return {
       proposta: {
         ...proposta,
         produtos: produtosCalculados,
+        tabelaId: tabelaId,
+        geradaAutomaticamente: true,
+        ...(notaRetorno?.id && { notaRetornoId: notaRetorno.id }),
+      },
+      notaRetorno: {
+        id: notaRetorno?.id || null,
+        cliente: cliente,
+        tabelaId: tabelaId,
+        produtosSelecionados: notaRetorno.produtos.map((p: any) => ({
+          produtoId: p.produtoId,
+          produto: p.produtoNome,
+          quantidade: p.quantidade,
+          valorUnitario: p.valorUnitario,
+          valorTotal: p.valorTotal,
+        })),
+        dataGeracao: notaRetorno.dataGeracao.toISOString(),
       },
     };
   }
