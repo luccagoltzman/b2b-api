@@ -63,14 +63,20 @@ model Proposta {
   quantidadeAdquirida     Float?
   valorCompra             Float?
   
+  // Campos - Associação com Tabela de Produtos
+  tabelaId                String?      // ID da tabela que gerou esta proposta
+  geradaAutomaticamente   Boolean      @default(false) // Indica se foi gerada automaticamente
+  
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
   checkpoints             Checkpoint[]
   analisesSaida           AnaliseSaida[]
+  tabelaProduto           TabelaProduto? @relation(fields: [tabelaId], references: [id])
 
   @@index([categoria])
   @@index([marca])
   @@index([tipoPedido])
+  @@index([tabelaId])
   @@map("propostas")
 }
 
@@ -243,3 +249,66 @@ model BenchmarkSetor {
   @@map("benchmarks_setor")
 }
 
+// Tabelas de Produtos - Para envio em massa e geração automática de propostas
+model TabelaProduto {
+  id                String            @id @default(uuid())
+  nome              String
+  representanteId   String?           // ID do representante (pode ser null se não houver autenticação)
+  status            String            @default("rascunho") // 'rascunho' | 'enviada' | 'aguardando_resposta' | 'proposta_gerada'
+  condicoesPagamento String?          @db.Text
+  prazoEntrega      String?           @db.Text
+  observacoes       String?           @db.Text
+  dataCriacao       DateTime          @default(now())
+  dataVencimento    DateTime
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relações
+  clientes          TabelaCliente[]
+  produtos          TabelaProdutoItem[]
+  propostas         Proposta[]
+
+  @@index([representanteId])
+  @@index([status])
+  @@index([dataCriacao])
+  @@map("tabelas_produtos")
+}
+
+// Clientes associados a uma tabela de produtos
+model TabelaCliente {
+  id                String            @id @default(uuid())
+  tabelaId          String
+  clienteNome       String
+  statusEnvio       String            @default("pendente") // 'pendente' | 'enviada' | 'respondida'
+  createdAt         DateTime          @default(now())
+  
+  tabela            TabelaProduto     @relation(fields: [tabelaId], references: [id], onDelete: Cascade)
+
+  @@index([tabelaId])
+  @@map("tabela_clientes")
+}
+
+// Produtos dentro de uma tabela de produtos
+model TabelaProdutoItem {
+  id                String            @id @default(uuid())
+  tabelaId          String
+  produto           String
+  produtoCodigo     String?
+  marca             String
+  categoria         String?
+  unidadeMedida     String
+  quantidade        Int               // Quantidade já definida pelo representante
+  valorUnitario     Float
+  aliquotaIpi       Float?           @default(0)
+  desconto           Float?           @default(0) // Desconto interno (não aparece para o cliente)
+  descontoTipo      String?          @default("percentual") // 'percentual' | 'valor'
+  ordem             Int?              // Ordem de exibição
+  createdAt         DateTime          @default(now())
+  
+  tabela            TabelaProduto     @relation(fields: [tabelaId], references: [id], onDelete: Cascade)
+
+  @@index([tabelaId])
+  @@index([produto])
+  @@index([marca])
+  @@map("tabela_produtos")
+}
