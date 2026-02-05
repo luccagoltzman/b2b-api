@@ -12,6 +12,7 @@ import posVendaRoutes from './routes/posVenda.routes';
 import mercadoRoutes from './routes/mercado.routes';
 import infopriceRoutes from './routes/infoprice.routes';
 import tabelaProdutoRoutes from './routes/tabela-produto.routes';
+import clienteRoutes from './routes/cliente.routes';
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/pos-venda', posVendaRoutes);
 app.use('/api/mercado', mercadoRoutes);
 app.use('/api/infoprice', infopriceRoutes);
 app.use('/api/tabelas-produtos', tabelaProdutoRoutes);
+app.use('/api/clientes', clienteRoutes);
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);

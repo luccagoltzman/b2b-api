@@ -512,12 +512,12 @@ export class TabelaProdutoService {
   }
 
   /**
-   * Gera uma proposta definitiva baseada na seleção do cliente
+   * Gera uma proposta definitiva baseada na seleção do cliente (Simular Retorno)
    */
   async gerarProposta(
     tabelaId: string,
     cliente: string,
-    selecoes: Array<{ produtoId: string }>
+    selecoes: Array<{ produtoId: string; quantidade?: number; selecionado?: boolean }>
   ): Promise<any> {
     // Buscar tabela com produtos
     const tabela = await prisma.tabelaProduto.findUnique({
@@ -534,27 +534,34 @@ export class TabelaProdutoService {
       throw new AppError('Tabela não encontrada', 'NOT_FOUND', 404);
     }
 
-    // Verificar se o cliente está na lista de clientes da tabela
+    // Cliente pode não estar na tabela (ex.: Simular Retorno com nome livre)
     const clienteEncontrado = tabela.clientes.find((c) => c.clienteNome === cliente);
-    if (!clienteEncontrado) {
-      throw new AppError('Cliente não encontrado nesta tabela', 'VALIDATION_ERROR', 400);
-    }
 
-    if (selecoes.length === 0) {
+    // Considerar apenas itens selecionados (selecionado !== false)
+    const selecoesAtivas = selecoes.filter((s) => s.selecionado !== false);
+    if (selecoesAtivas.length === 0) {
       throw new AppError('Selecione pelo menos um produto', 'VALIDATION_ERROR', 400);
     }
 
-    // Buscar produtos selecionados
+    // Buscar produtos selecionados e obter quantidade da seleção quando fornecida
     const produtosSelecionados = tabela.produtos.filter((p) =>
-      selecoes.some((s) => s.produtoId === p.id)
+      selecoesAtivas.some((s) => s.produtoId === p.id)
     );
 
     if (produtosSelecionados.length === 0) {
       throw new AppError('Nenhum produto válido foi selecionado', 'VALIDATION_ERROR', 400);
     }
 
-    // Calcular valores para cada produto
+    const getQuantidade = (produtoId: string): number => {
+      const sel = selecoesAtivas.find((s) => s.produtoId === produtoId);
+      if (sel?.quantidade != null && sel.quantidade > 0) return sel.quantidade;
+      const prod = tabela.produtos.find((p) => p.id === produtoId);
+      return prod?.quantidade ?? 1;
+    };
+
+    // Calcular valores para cada produto (usando quantidade da seleção quando fornecida)
     const produtosCalculados = produtosSelecionados.map((produto) => {
+      const quantidade = getQuantidade(produto.id);
       // 1. Valor unitário base
       let valorComIPI = produto.valorUnitario;
 
@@ -574,7 +581,7 @@ export class TabelaProdutoService {
       }
 
       // 4. Calcular valor total do produto
-      const valorTotal = valorComDesconto * produto.quantidade;
+      const valorTotal = valorComDesconto * quantidade;
 
       return {
         produto: produto.produto,
@@ -582,8 +589,8 @@ export class TabelaProdutoService {
         marca: produto.marca,
         categoria: produto.categoria,
         unidadeMedida: produto.unidadeMedida,
-        valorUnitario: valorComDesconto, // Valor unitário após IPI e desconto
-        quantidade: produto.quantidade,
+        valorUnitario: valorComDesconto,
+        quantidade,
         aliquotaIpi: produto.aliquotaIpi || 0,
         desconto: produto.desconto || 0,
         descontoTipo: produto.descontoTipo || 'percentual',
@@ -709,11 +716,13 @@ export class TabelaProdutoService {
       }
     }
 
-    // Atualizar status do cliente na tabela
-    await prisma.tabelaCliente.update({
-      where: { id: clienteEncontrado.id },
-      data: { statusEnvio: 'respondida' },
-    });
+    // Atualizar status do cliente na tabela (apenas se estiver na tabela)
+    if (clienteEncontrado) {
+      await prisma.tabelaCliente.update({
+        where: { id: clienteEncontrado.id },
+        data: { statusEnvio: 'respondida' },
+      });
+    }
 
     // Verificar se todos os clientes responderam
     const clientesAtualizados = await prisma.tabelaCliente.findMany({
@@ -727,36 +736,15 @@ export class TabelaProdutoService {
         data: { status: 'proposta_gerada' },
       });
     } else {
-      // Se pelo menos um respondeu, manter como aguardando_resposta
       await prisma.tabelaProduto.update({
         where: { id: tabelaId },
         data: { status: 'aguardando_resposta' },
       });
     }
 
-    // Retornar proposta com todos os produtos calculados e nota de retorno
-    return {
-      proposta: {
-        ...proposta,
-        produtos: produtosCalculados,
-        tabelaId: tabelaId,
-        geradaAutomaticamente: true,
-        ...(notaRetorno?.id && { notaRetornoId: notaRetorno.id }),
-      },
-      notaRetorno: {
-        id: notaRetorno?.id || null,
-        cliente: cliente,
-        tabelaId: tabelaId,
-        produtosSelecionados: notaRetorno.produtos.map((p: any) => ({
-          produtoId: p.produtoId,
-          produto: p.produtoNome,
-          quantidade: p.quantidade,
-          valorUnitario: p.valorUnitario,
-          valorTotal: p.valorTotal,
-        })),
-        dataGeracao: notaRetorno.dataGeracao.toISOString(),
-      },
-    };
+    // Retornar o objeto da proposta criada (contrato do frontend)
+    const propostaRetorno = await this.propostaService.buscarPorId(proposta.id);
+    return propostaRetorno!;
   }
 
   /**

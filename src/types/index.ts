@@ -44,6 +44,22 @@ export type DescontoTipo = 'percentual' | 'valor';
 
 export type TipoPedido = 'venda' | 'cotacao' | 'orcamento';
 
+export interface Cliente {
+  id: string;
+  nome: string;
+  email?: string | null;
+  telefone?: string | null;
+  empresa?: string | null;
+  cnpj?: string | null;
+  endereco?: string | null;
+  numero?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  cep?: string | null;
+  inscricaoEstadual?: string | null;
+}
+
 export interface Proposta {
   id: string;
   cliente: string;
@@ -96,6 +112,10 @@ export interface Proposta {
   // Campos - Dados de Compra (Pós-Venda)
   quantidadeAdquirida?: number;
   valorCompra?: number;
+  
+  // Campos - Associação com Tabela de Produtos (Simular Retorno)
+  tabelaId?: string;
+  geradaAutomaticamente?: boolean;
   
   checkpoints?: Checkpoint[];
 }

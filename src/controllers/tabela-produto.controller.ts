@@ -64,13 +64,15 @@ const enviarTabelaSchema = z.object({
     .optional(),
 });
 
-// Schema de validação para geração de proposta
+// Schema de validação para geração de proposta (Simular Retorno)
 const gerarPropostaSchema = z.object({
   cliente: z.string().min(1, 'Cliente é obrigatório'),
   selecoes: z
     .array(
       z.object({
         produtoId: z.string().min(1, 'ID do produto é obrigatório'),
+        quantidade: z.number().positive('Quantidade deve ser maior que zero').optional(),
+        selecionado: z.boolean().optional(),
       })
     )
     .min(1, 'Selecione pelo menos um produto'),

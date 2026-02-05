@@ -461,6 +461,8 @@ export class PropostaService {
       clienteNomeFantasia: proposta.clienteNomeFantasia || undefined,
       quantidadeAdquirida: proposta.quantidadeAdquirida || undefined,
       valorCompra: proposta.valorCompra || undefined,
+      tabelaId: proposta.tabelaId ?? undefined,
+      geradaAutomaticamente: proposta.geradaAutomaticamente ?? undefined,
     };
   }
 

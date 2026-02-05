@@ -82,6 +82,29 @@ model Proposta {
   @@map("propostas")
 }
 
+// Cadastro de clientes (dados comerciais para tabelas de produtos etc.)
+model Cliente {
+  id                 String   @id @default(uuid())
+  nome               String   // Nome fantasia ou nome do contato (obrigatório)
+  email              String?
+  telefone           String?
+  empresa            String?  // Razão social
+  cnpj               String?
+  endereco           String?
+  numero             String?
+  bairro             String?
+  cidade             String?
+  estado             String?  @db.VarChar(2) // UF
+  cep                String?
+  inscricaoEstadual  String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([nome])
+  @@index([empresa])
+  @@map("clientes")
+}
+
 model Visita {
   id          String       @id @default(uuid())
   cliente     String
