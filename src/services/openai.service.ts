@@ -499,5 +499,98 @@ Retorne APENAS um JSON válido com a seguinte estrutura:
       throw new Error(`Erro ao gerar análise de saída: ${error.message || 'Erro desconhecido'}`);
     }
   }
+
+  /**
+   * Interpreta um prompt em linguagem natural e retorna dados estruturados
+   * para criar tabela de produtos e opcionalmente enviar (fluxo "Criar proposta com IA").
+   */
+  async propostaPorPrompt(promptUsuario: string): Promise<{
+    cliente: string;
+    clienteId?: string;
+    quantidadeProdutos?: number;
+    produtosSugeridos?: Array<{
+      produto: string;
+      marca?: string;
+      quantidade?: number;
+      valorUnitario?: number;
+      unidadeMedida?: string;
+    }>;
+    acao?: 'criar' | 'criar_e_enviar';
+    nomeTabela?: string;
+  }> {
+    const openai = getOpenAI();
+    if (!openai) {
+      throw new Error('OpenAI API não configurada. Configure OPENAI_API_KEY no arquivo .env');
+    }
+
+    const systemPrompt = `Você é um assistente que interpreta pedidos em linguagem natural para criar propostas comerciais B2B (tabelas de produtos).
+
+Sua tarefa é analisar o prompt do usuário e extrair as informações em um JSON com EXATAMENTE esta estrutura. Responda APENAS com um JSON válido, sem texto antes ou depois.
+
+REGRAS:
+1. **cliente** (OBRIGATÓRIO): Extraia sempre o nome do cliente. Procure por:
+   - Nome entre aspas (ex: "João Silva")
+   - Nome após palavras como "cliente", "para o cliente", "para"
+   - Se não encontrar nome explícito, use um nome genérico como "Cliente" ou o primeiro nome que parecer referir-se ao destinatário
+
+2. **quantidadeProdutos** (opcional): Se o usuário disser "com N produtos", "N produtos", "N itens", preencha com o número N.
+
+3. **produtosSugeridos** (opcional): Array de objetos com: produto (string), marca (string opcional), quantidade (number opcional), valorUnitario (number opcional), unidadeMedida (string opcional, ex: "unidade", "kg", "caixa"). Se o usuário pediu "N produtos" sem especificar quais, sugira placeholders como "Produto 1", "Produto 2", "Produto 3" com marca e valores sugeridos.
+
+4. **acao** (opcional): 
+   - Se o usuário pedir "envio", "enviar", "faça o envio", "envie", "enviar a proposta", retorne "criar_e_enviar"
+   - Caso contrário retorne "criar"
+
+5. **nomeTabela** (opcional): Sugestão de nome para a tabela. Ex: "Proposta João Silva - Jan 2025" (use mês/ano atual).
+
+NÃO inclua clienteId na resposta (o backend preencherá se encontrar no cadastro).
+
+Exemplo de resposta:
+{"cliente":"João Silva","quantidadeProdutos":3,"produtosSugeridos":[{"produto":"Produto 1","marca":"Marca X","quantidade":1,"valorUnitario":100,"unidadeMedida":"unidade"},{"produto":"Produto 2","marca":"Marca Y","quantidade":1,"valorUnitario":150,"unidadeMedida":"unidade"},{"produto":"Produto 3","marca":"Marca Z","quantidade":1,"valorUnitario":80,"unidadeMedida":"unidade"}],"acao":"criar_e_enviar","nomeTabela":"Proposta João Silva - Fev 2025"}`;
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: promptUsuario.trim() },
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+        response_format: { type: 'json_object' },
+      });
+
+      const content = completion.choices[0]?.message?.content || '{}';
+      let jsonContent = content.trim();
+      if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+      }
+      const jsonMatch = jsonContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) jsonContent = jsonMatch[0];
+
+      const parsed = JSON.parse(jsonContent);
+
+      if (!parsed.cliente || typeof parsed.cliente !== 'string') {
+        parsed.cliente = 'Cliente';
+      }
+      if (parsed.acao && !['criar', 'criar_e_enviar'].includes(parsed.acao)) {
+        parsed.acao = 'criar';
+      }
+
+      return {
+        cliente: String(parsed.cliente).trim(),
+        quantidadeProdutos: typeof parsed.quantidadeProdutos === 'number' ? parsed.quantidadeProdutos : undefined,
+        produtosSugeridos: Array.isArray(parsed.produtosSugeridos) ? parsed.produtosSugeridos : undefined,
+        acao: parsed.acao === 'criar_e_enviar' ? 'criar_e_enviar' : 'criar',
+        nomeTabela: typeof parsed.nomeTabela === 'string' ? parsed.nomeTabela.trim() : undefined,
+      };
+    } catch (error: any) {
+      console.error('Erro ao interpretar proposta por prompt:', error);
+      if (error instanceof SyntaxError || error.message?.includes('JSON')) {
+        throw new Error('Erro ao processar resposta da IA: formato JSON inválido');
+      }
+      throw new Error(`Erro ao interpretar prompt: ${error.message || 'Erro desconhecido'}`);
+    }
+  }
 }
 
