@@ -105,6 +105,31 @@ model Cliente {
   @@map("clientes")
 }
 
+// Produtos cadastrados para tabelas e propostas
+model Produto {
+  id                String   @id @default(uuid())
+  produto          String
+  produtoCodigo    String?
+  marca             String
+  categoria         String?
+  unidadeMedida    String
+  valorUnitario    Float
+  aliquotaIpi       Float?
+
+  // Apresentação do produto (imagem ou PDF)
+  apresentacaoTipo String?
+  apresentacaoUrl  String?
+  apresentacaoNome String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([produto])
+  @@index([marca])
+  @@index([categoria])
+  @@map("produtos")
+}
+
 model Visita {
   id          String       @id @default(uuid())
   cliente     String

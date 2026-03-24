@@ -44,6 +44,8 @@ export type DescontoTipo = 'percentual' | 'valor';
 
 export type TipoPedido = 'venda' | 'cotacao' | 'orcamento';
 
+export type ApresentacaoTipo = 'imagem' | 'pdf';
+
 export interface Cliente {
   id: string;
   nome: string;
@@ -58,6 +60,21 @@ export interface Cliente {
   estado?: string | null;
   cep?: string | null;
   inscricaoEstadual?: string | null;
+}
+
+export interface Produto {
+  id: string;
+  produto: string;
+  produtoCodigo?: string | null;
+  marca: string;
+  categoria?: string | null;
+  unidadeMedida: string;
+  valorUnitario: number;
+  aliquotaIpi?: number | null;
+
+  apresentacaoTipo?: ApresentacaoTipo | null;
+  apresentacaoUrl?: string | null;
+  apresentacaoNome?: string | null;
 }
 
 export interface Proposta {

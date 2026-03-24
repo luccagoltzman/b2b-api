@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { config } from './config/env';
 import { errorHandler } from './middleware/errorHandler';
+import path from 'path';
 
 // Routes
 import dashboardRoutes from './routes/dashboard.routes';
@@ -14,6 +15,7 @@ import infopriceRoutes from './routes/infoprice.routes';
 import tabelaProdutoRoutes from './routes/tabela-produto.routes';
 import clienteRoutes from './routes/cliente.routes';
 import iaRoutes from './routes/ia.routes';
+import produtoRoutes from './routes/produto.routes';
 
 const app = express();
 
@@ -25,6 +27,9 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Arquivos enviados pelo usuário (imagens/pdfs de apresentação)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -42,6 +47,7 @@ app.use('/api/infoprice', infopriceRoutes);
 app.use('/api/tabelas-produtos', tabelaProdutoRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/ia', iaRoutes);
+app.use('/api/produtos', produtoRoutes);
 
 // Error handler (deve ser o último middleware)
 app.use(errorHandler);
